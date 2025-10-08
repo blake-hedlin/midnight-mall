@@ -1,27 +1,38 @@
 -- Signals.lua
--- RemoteEvents/Functions for client/server communication
+-- BindableEvents for server-to-server and RemoteEvents for client/server communication
 
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
+local RunService = game:GetService("RunService")
 
 local folder = Instance.new("Folder")
 folder.Name = "Signals"
 folder.Parent = ReplicatedStorage
 
-local function newEvent(name)
+local function newRemoteEvent(name)
   local ev = Instance.new("RemoteEvent")
   ev.Name = name
   ev.Parent = folder
   return ev
 end
 
+local function newBindableEvent(name)
+  local ev = Instance.new("BindableEvent")
+  ev.Name = name
+  ev.Parent = folder
+  return ev
+end
+
 local M = {
-  DayStarted = newEvent("DayStarted"),
-  NightStarted = newEvent("NightStarted"),
-  StateTick = newEvent("StateTick"),
-  StateChanged = newEvent("StateChanged"),
-  RequestState = newEvent("RequestState"), -- client → server
-  Looted = newEvent("Looted"), -- server → client feedback
-  InventoryChanged = newEvent("InventoryChanged"), -- server → client
+  -- Server-to-server signals (BindableEvents)
+  DayStarted = newBindableEvent("DayStarted"),
+  NightStarted = newBindableEvent("NightStarted"),
+
+  -- Client/server communication (RemoteEvents)
+  StateTick = newRemoteEvent("StateTick"),
+  StateChanged = newRemoteEvent("StateChanged"),
+  RequestState = newRemoteEvent("RequestState"), -- client → server
+  Looted = newRemoteEvent("Looted"), -- server → client feedback
+  InventoryChanged = newRemoteEvent("InventoryChanged"), -- server → client
 }
 
 return M

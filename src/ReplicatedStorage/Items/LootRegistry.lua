@@ -74,8 +74,10 @@ Players.PlayerAdded:Connect(function(player)
   LootRegistry._lootedToday[tostring(player.UserId)] = 0
 end)
 
-Signals.DayStarted.OnServerEvent:Connect(function()
-  -- not used; DayStarted is server->client. Reset via server tick if needed.
+-- Reset loot counts at the start of each day
+Signals.DayStarted.Event:Connect(function()
+  LootRegistry._lootedToday = {}
+  print("[LootRegistry] Loot counts reset for new day")
 end)
 
 return LootRegistry

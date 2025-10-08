@@ -67,7 +67,7 @@ Players.PlayerAdded:Connect(function(player)
 end)
 
 -- Respawn queued players at DayStart
-Signals.DayStarted.OnServerEvent:Connect(function()
+Signals.DayStarted.Event:Connect(function()
   for userId, _ in pairs(respawnQueue) do
     local player = Players:GetPlayerByUserId(userId)
     if player then
@@ -75,6 +75,7 @@ Signals.DayStarted.OnServerEvent:Connect(function()
     end
   end
   respawnQueue = {}
+  print("[Spawn] Respawned " .. #respawnQueue .. " queued players")
 end)
 
 -- TODO: Implement 5-second respawn delay as specified in acceptance criteria

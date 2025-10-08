@@ -39,17 +39,26 @@ Add hooks for currency and shop systems to reduce refactoring later. Focus remai
 **Claude Prompt:**
 
 ```
-Title: Add Lighting Transitions for Day/Night Cycle  
-Context: Clock module already fires DayStarted/NightStarted signals.  
-Goal: Change Lighting Ambient, FogEnd, ColorCorrection when state changes.  
-Acceptance: Ambient 0.8 Day → 0.1 Night; Night adds red fog; banner text shows transition.  
-Test Plan: Play for 2 minutes and verify lighting and HUD change twice.  
+Title: Add Lighting Transitions for Day/Night Cycle
+Context: Clock module already fires DayStarted/NightStarted signals.
+Goal: Change Lighting Ambient, FogEnd, ColorCorrection when state changes.
+Acceptance: Ambient 0.8 Day → 0.1 Night; Night adds red fog; banner text shows transition.
+Test Plan: Play for 2 minutes and verify lighting and HUD change twice.
 Files: `ServerScriptService/Systems/LightingController.server.lua`
 ```
 
 **Checklist:**
 
--
+- [x] Create LightingPresets module with Day/Night configurations (Story 8)
+- [x] Refactor Signals to use BindableEvents for server-to-server communication
+- [x] Implement LightingController with TweenService transitions
+- [x] Connect DayStarted/NightStarted signals to lighting changes
+- [x] Verify ambient lighting values (0.8 Day → 0.1 Night)
+- [x] Verify red fog effect during night phase (FogEnd 500→80, red tint)
+- [x] Test 3-second smooth transitions between states
+- [ ] Add HUD banner for Day/Night transitions (deferred to Story 5)
+
+**Status:** ✅ **COMPLETE** (HUD banner will be added in Story 5)
 
 ---
 

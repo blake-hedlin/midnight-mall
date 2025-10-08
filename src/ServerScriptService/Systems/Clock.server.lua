@@ -1,10 +1,13 @@
 -- Clock.server.lua
 -- Simple Day/Night state with signals
 
+print("[Clock] Clock.server.lua is loading... (v2)")
+
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 local RunService = game:GetService("RunService")
 
 local Signals = require(ReplicatedStorage.Shared.Signals)
+print("[Clock] Signals loaded successfully")
 
 local Clock = {}
 Clock.state = "Day" -- "Day" | "Night"
@@ -18,15 +21,18 @@ local function setState(newState)
     return
   end
   Clock.state = newState
+  print("[Clock] State changed to:", newState, "| Night count:", Clock.nightCount)
   if newState == "Day" then
     Signals.DayStarted:Fire(Clock.nightCount)
+    print("[Clock] DayStarted signal fired")
   else
     Clock.nightCount += 1
     Signals.NightStarted:Fire(Clock.nightCount)
+    print("[Clock] NightStarted signal fired")
   end
 end
 
-Signals.RequestState:Connect(function(player)
+Signals.RequestState.OnServerEvent:Connect(function(player)
   Signals.StateChanged:FireClient(player, Clock.state, Clock.time, Clock.nightCount)
 end)
 

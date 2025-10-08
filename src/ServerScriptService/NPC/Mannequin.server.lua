@@ -4,7 +4,10 @@
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 local Signals = require(ReplicatedStorage.Shared.Signals)
 
-Signals.NightStarted.OnClientEvent:Connect(function() end) -- placeholder (server->client in practice)
+Signals.NightStarted.Event:Connect(function(nightCount)
+  -- Placeholder: In Sprint 2, spawn and activate mannequins here
+  print("[Mannequin] Night " .. nightCount .. " started - would spawn enemies here")
+end)
 
 -- In Sprint 2:
 -- 1) Spawn mannequins at tagged spawn points on Night start
