@@ -5,3 +5,6 @@
 *.rbxm
 *.rbxmx
 wally.lock
+
+# Editor settings (user preferences)
+.vscode/
