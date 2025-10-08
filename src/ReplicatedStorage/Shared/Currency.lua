@@ -1,10 +1,10 @@
 -- Currency.lua
--- Sprint 1, Story 10: Soft currency scaffolding (non-functional in Sprint 1)
+-- Sprint 1, Story 10: Soft currency scaffolding
 -- Provides data structure and API for future economy integration
 
 local Players = game:GetService("Players")
--- local ReplicatedStorage = game:GetService("ReplicatedStorage")
--- local Signals = require(ReplicatedStorage.Shared.Signals) -- TODO Sprint 2: Use for CurrencyChanged signal
+local ReplicatedStorage = game:GetService("ReplicatedStorage")
+local Signals = require(ReplicatedStorage.Shared.Signals)
 
 local Currency = {}
 Currency._playerCoins = {} -- [userId] = coinAmount
@@ -53,8 +53,8 @@ function Currency.addCoins(player, amount)
     coinsValue.Value = Currency._playerCoins[userId]
   end
 
-  -- TODO: Fire signal for HUD update
-  -- Signals.CurrencyChanged:FireClient(player, Currency._playerCoins[userId])
+  -- Fire signal for HUD update
+  Signals.InventoryChanged:FireClient(player, "coins", Currency._playerCoins[userId])
 end
 
 -- Remove coins from player (Sprint 2: integrate with shop purchases)

@@ -33,6 +33,9 @@ local M = {
   RequestState = newRemoteEvent("RequestState"), -- client → server
   Looted = newRemoteEvent("Looted"), -- server → client feedback
   InventoryChanged = newRemoteEvent("InventoryChanged"), -- server → client
+  PlaceBarricade = newRemoteEvent("PlaceBarricade"), -- client → server placement request
+  RepairBarricade = newRemoteEvent("RepairBarricade"), -- client → server repair request
+  BarricadePlaced = newRemoteEvent("BarricadePlaced"), -- server → client confirmation
 }
 
 return M

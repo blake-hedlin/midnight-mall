@@ -22,6 +22,10 @@ local function setState(newState)
   end
   Clock.state = newState
   print("[Clock] State changed to:", newState, "| Night count:", Clock.nightCount)
+
+  -- Fire state change to all clients for banner
+  Signals.StateChanged:FireAllClients(newState)
+
   if newState == "Day" then
     Signals.DayStarted:Fire(Clock.nightCount)
     print("[Clock] DayStarted signal fired")

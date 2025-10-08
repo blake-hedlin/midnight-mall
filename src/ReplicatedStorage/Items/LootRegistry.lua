@@ -7,7 +7,6 @@ local Players = game:GetService("Players")
 local Signals = require(ReplicatedStorage.Shared.Signals)
 
 local LootRegistry = {}
-LootRegistry._lootedToday = {} -- [player.UserId] = count
 
 local tableUtil = {}
 
@@ -55,29 +54,20 @@ end
 
 function LootRegistry.tryLoot(player, _cratePart)
   if not player or not player.UserId then
-    return
-  end
-  local uid = tostring(player.UserId)
-  LootRegistry._lootedToday[uid] = LootRegistry._lootedToday[uid] or 0
-  if LootRegistry._lootedToday[uid] >= 3 then
-    Signals.Looted:FireClient(player, false, "You already looted enough today.")
-    return
+    return false
   end
 
   local entry = tableUtil.weightedChoice(LootRegistry.Entries)
   giveItem(player, entry.id, entry.amount)
-  LootRegistry._lootedToday[uid] += 1
-  Signals.Looted:FireClient(player, true, "Found " .. entry.id)
+  Signals.Looted:FireClient(player, true, "Found " .. entry.id .. " x" .. entry.amount)
+  return true
 end
 
+-- Initialize player inventory on join
 Players.PlayerAdded:Connect(function(player)
-  LootRegistry._lootedToday[tostring(player.UserId)] = 0
-end)
-
--- Reset loot counts at the start of each day
-Signals.DayStarted.Event:Connect(function()
-  LootRegistry._lootedToday = {}
-  print("[LootRegistry] Loot counts reset for new day")
+  local invFolder = Instance.new("Folder")
+  invFolder.Name = "Inventory"
+  invFolder.Parent = player
 end)
 
 return LootRegistry

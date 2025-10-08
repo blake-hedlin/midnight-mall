@@ -66,18 +66,25 @@ Players.PlayerAdded:Connect(function(player)
   end)
 end)
 
--- Respawn queued players at DayStart
+-- Respawn queued players at DayStart with 5-second delay
 Signals.DayStarted.Event:Connect(function()
+  local queueCount = 0
   for userId, _ in pairs(respawnQueue) do
-    local player = Players:GetPlayerByUserId(userId)
-    if player then
-      player:LoadCharacter()
-    end
+    queueCount += 1
   end
-  respawnQueue = {}
-  print("[Spawn] Respawned " .. #respawnQueue .. " queued players")
-end)
 
--- TODO: Implement 5-second respawn delay as specified in acceptance criteria
--- TODO: Test respawn location randomization
--- TODO: Verify inventory reset on death
+  if queueCount > 0 then
+    print("[Spawn] Day started, respawning " .. queueCount .. " queued players in 5 seconds")
+    task.wait(5) -- 5-second delay as per acceptance criteria
+
+    for userId, _ in pairs(respawnQueue) do
+      local player = Players:GetPlayerByUserId(userId)
+      if player then
+        player:LoadCharacter()
+        print("[Spawn] Respawned player:", player.Name)
+      end
+    end
+
+    respawnQueue = {}
+  end
+end)
