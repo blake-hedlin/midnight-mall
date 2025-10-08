@@ -1,0 +1,7 @@
+/build/
+/Packages/
+*.rbxl
+*.rbxlx
+*.rbxm
+*.rbxmx
+wally.lock

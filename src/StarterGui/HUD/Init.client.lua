@@ -1,0 +1,2 @@
+-- Init.client.lua
+-- Placeholder for future HUD components (night vignette, tutorial, etc.)
