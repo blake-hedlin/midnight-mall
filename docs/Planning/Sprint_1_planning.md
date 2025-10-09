@@ -34,201 +34,197 @@ Add hooks for currency and shop systems to reduce refactoring later. Focus remai
 
 ## 🧠 Stories, Prompts & Tracking
 
-### Story 1 — Lighting Cycle & Clock Controller
+## Story 1 — Lighting Cycle & Clock Controller
+**Experience Beat**: Time shifts are cinematic beats. Players *feel* the world change (light, fog, banner, audio) without UI clutter.
 
-**Claude Prompt:**
-
+```prompt
+You are Claude Code implementing Story 1.
+Context: Use LightingPresets (Day/Night/Dawn) from /docs/ux-context.md and module `ReplicatedStorage/Shared/LightingPresets.lua`. Clock already emits `Signals.DayStarted` / `Signals.NightStarted`.
+Goal: Implement `LightingController` to tween Lighting between presets using `TWEEN_SCENE` and trigger `UI_Banner` + audio.
+Acceptance:
+- Day→Night and Night→Dawn transitions tween in 1.5 s; no frame hitching.
+- Apply Fog, Ambient, Brightness, Exposure, ColorShift per preset.
+- Fire `UI_Banner` (text: "Night Falling" / "Dawn Breaking").
+- Start/stop heartbeat loop on night start/end.
+Files: `ServerScriptService/Systems/LightingController.server.lua`.
+Test: Play 2 minutes and verify two full transitions; confirm banner timing matches lighting.
+Sequence: precedes Story 5 (HUD), Story 4 (Enemy).
+Checklist: Lighting tokens, TWEEN_SCENE, UI_Banner, SFX_NightStart.
 ```
-Title: Add Lighting Transitions for Day/Night Cycle
-Context: Clock module already fires DayStarted/NightStarted signals.
-Goal: Change Lighting Ambient, FogEnd, ColorCorrection when state changes.
-Acceptance: Ambient 0.8 Day → 0.1 Night; Night adds red fog; banner text shows transition.
-Test Plan: Play for 2 minutes and verify lighting and HUD change twice.
-Files: `ServerScriptService/Systems/LightingController.server.lua`
-```
-
-**Checklist:**
-
-- [x] Create LightingPresets module with Day/Night configurations (Story 8)
-- [x] Refactor Signals to use BindableEvents for server-to-server communication
-- [x] Implement LightingController with TweenService transitions
-- [x] Connect DayStarted/NightStarted signals to lighting changes
-- [x] Verify ambient lighting values (0.8 Day → 0.1 Night)
-- [x] Verify red fog effect during night phase (FogEnd 500→80, red tint)
-- [x] Test 3-second smooth transitions between states
-- [ ] Add HUD banner for Day/Night transitions (deferred to Story 5)
-
-**Status:** ✅ **COMPLETE** (HUD banner will be added in Story 5)
 
 ---
 
-### Story 2 — Loot System Pass 1
+## Story 2 — Loot System Pass 1
+**Experience Beat**: Calm scavenging with tactile feedback (lid nudge, dust puff) builds anticipation before night.
 
-**Claude Prompt:**
-
+```prompt
+Implement basic lootable containers.
+Context: Parts tagged `LootCrate`; `LootRegistry` provides weighted items; `Inventory.lua` handles counts and `Signals.InventoryChanged`.
+Goal: Interact (E) to roll loot; spawn item server‑side; update HUD.
+Acceptance:
+- Each crate: cooldown indicator; 3 unique loots per Day phase.
+- Visuals: puff particle + `SFX_LootOpen`, HUD count increases with 0.15 s tick animation.
+- Resets on `DayStarted`.
+Files: `ServerScriptService/Systems/Loot.server.lua`, `ReplicatedStorage/Shared/Inventory.lua`.
+Test: Place 5 crates, loot them, verify uniqueness and HUD updates.
+Sequence: follows Story 1 (for day detection); precedes Story 5 (HUD icons).
+Checklist: UI_IconPrimary, Signals.InventoryChanged, TWEEN_FEEDBACK.
 ```
-Title: Implement Randomized Loot Containers  
-Context: Tagged Parts (`LootCrate`) exist; LootRegistry provides weights.  
-Goal: Spawn items on interaction and update inventory client-side.  
-Acceptance: Loot 3 unique items per day; crate shows cooldown indicator.  
-Test Plan: Spawn 5 crates and loot them; verify inventory updates and resets next day.  
-Files: `ServerScriptService/Systems/Loot.server.lua` + `ReplicatedStorage/Shared/Inventory.lua`
-```
-
-**Checklist:**
-
--
 
 ---
 
-### Story 3 — Barricade Placement & Durability
+## Story 3 — Barricade Placement & Durability
+**Experience Beat**: Snappy, readable placement; boards feel weighty; repairs are quick but costly in time.
 
-**Claude Prompt:**
-
+```prompt
+Add barricade ghost/placement and durability.
+Context: `BarricadeAnchor` tags mark slots; player needs 1 `wood` to place.
+Goal: Green (valid)/Red (invalid) ghost preview; confirm places Board model with IntValue `Durability` (range 3–5).
+Acceptance:
+- Placement confirm animates snap in 0.2 s + `SFX_BoardPlace`.
+- Enemies reduce `Durability`; when 0, board breaks with particle burst.
+- Repair consumes `wood` and increases `Durability` by 1 up to max.
+Files: `ServerScriptService/Systems/Barricade.server.lua`.
+Test: Place and repair 3 boards; verify printed durability ticks align with hits.
+Sequence: follows Story 2 (wood acquisition); precedes Story 4 (enemy validation).
+Checklist: Ghost material = ForceField, TWEEN_FEEDBACK, SFX_BoardPlace.
 ```
-Title: Add Ghost Preview and Board Durability  
-Context: Anchor Parts tagged `BarricadeAnchor`.  
-Goal: Players place board preview (Green = valid / Red = invalid), consume 1 wood, spawn Board model with Durability IntValue.  
-Acceptance: Board breaks after 3–5 enemy hits; repair with plank restores durability.  
-Test Plan: Place and repair 3 boards; verify Durability values print to output.  
-Files: `ServerScriptService/Systems/Barricade.server.lua`
+---
+
+## Story 4 — Enemy Stub (Mannequin)
+**Experience Beat**: A simple pursuer that validates the defense loop; audible hits communicate danger.
+
+```prompt
+Create placeholder enemy to test barricades.
+Context: Pathfind to nearest `BarricadeAnchor`/player at Night; despawn at Dawn.
+Goal: Spawn on `NightStarted`, attack boards (damage per hit), play hit SFX, despawn on `DayStarted`.
+Acceptance:
+- Attack cadence 0.8 s; damage reduces board durability consistently.
+- Server log shows damage ticks; client hears `SFX_EnemyHit`.
+Files: `ServerScriptService/NPC/Mannequin.server.lua`.
+Test: Observe enemy break at least one board per night if undefended.
+Sequence: follows Story 3; precedes Story 6 (respawn validation).
+Checklist: PathfindingService, Heartbeat loop volume 0.4→0 on Dawn.
 ```
-
-**Checklist:**
-
--
 
 ---
 
-### Story 4 — Enemy Stub (Mannequin)
+## Story 5 — HUD & Banner Integration
+**Experience Beat**: HUD stays subtle; banners mark phase shifts. Inventory changes feel alive but not noisy.
 
-**Claude Prompt:**
-
+```prompt
+Enhance HUD for inventory/time + banners.
+Context: `StarterGui/HUD` prototype exists. Use `UI_IconPrimary` and `UI_Banner` from /docs/ux-context.md.
+Goal: Icons for Wood/Snack/Battery; time counter; show banner for Day/Night.
+Acceptance:
+- Icons use consistent spacing/padding; counts update with 0.15 s tick.
+- `UI_Banner` slide in 0.3 s, fade out 1.0 s with colorblind‑safe contrast.
+- No frame drops (>55 fps) on update bursts.
+Files: `StarterGui/HUD/Init.client.lua`, `ReplicatedStorage/Shared/Signals.lua`.
+Test: Loot items; observe real‑time updates; verify banner on NightStart.
+Sequence: follows Story 1 & 2; precedes Story 10 (Shop button placement).
+Checklist: Font_Primary, FS_MD, UI_Banner, TWEEN_UI.
 ```
-Title: Create Basic Enemy AI for Testing Barricades  
-Context: Placeholder NPC to validate combat loop.  
-Goal: Pathfind toward nearest player or anchor, attack board, despawn at dawn.  
-Acceptance: Enemy spawns NightStart, damages boards, plays SFX, despawns on DayStart.  
-Test Plan: Observe enemy attack cycle; verify server log shows damage ticks.  
-Files: `ServerScriptService/NPC/Mannequin.server.lua`
-```
-
-**Checklist:**
-
--
 
 ---
 
-### Story 5 — HUD & Banner Integration
+## Story 6 — Spawn & Respawn Flow
+**Experience Beat**: Death is a setback, not a stop; Dawn is the safe reset.
 
-**Claude Prompt:**
-
+```prompt
+Implement spawn points and dawn respawn.
+Context: `workspace/AtriumSpawn` contains SpawnLocations.
+Goal: Spawn at random on join; on death, queue respawn at next `DayStarted` (<=5 s).
+Acceptance:
+- Inventory resets on respawn; camera re‑centers with 1.0 s ease.
+- No duplicate spawns at same exact frame; handle simultaneous joins.
+Files: `ServerScriptService/Systems/Spawn.server.lua`.
+Test: Die at night; verify respawn within 5 s of Dawn; inventory cleared.
+Sequence: follows Story 4; precedes Story 7 (greybox traversal QA).
+Checklist: TWEEN_SCENE camera, Signals.PlayerDied.
 ```
-Title: Enhance HUD for Inventory and Time  
-Context: HUD prototype exists in StarterGui/HUD.  
-Goal: Add icons for Wood/Snack/Battery, update counts on inventory signal, display banner for Day/Night transitions.  
-Acceptance: HUD auto-updates inventory and time; no frame drops.  
-Test Plan: Loot items and observe real-time updates; verify banner shows NightStart.  
-Files: `StarterGui/HUD/Init.client.lua` + `ReplicatedStorage/Shared/Signals.lua`
-```
-
-**Checklist:**
-
--
 
 ---
 
-### Story 6 — Spawn & Respawn Flow
+## Story 7 — Mall Greybox Environment (Design Integration)
+**Experience Beat**: A readable layout: Atrium hub, two stores, maintenance corridor; traversal is frictionless.
 
-**Claude Prompt:**
-
+```prompt
+Build greybox map for traversal and tagging.
+Context: Use `CollectionService` tags: `LootCrate`, `BarricadeAnchor`, `AtriumSpawn`.
+Goal: `.rbxl` file with playtestable navmesh; no unintentional fall/clips.
+Acceptance:
+- Player can walk end‑to‑end; pathfinding works; anchors placed logically.
+- Lighting volumes feel distinct by zone (Atrium brighter than stores).
+Files: `workspace/MallGreybox.rbxm`.
+Test: 5‑minute walk test; pathfinding from enemy spawns to barricades.
+Sequence: precedes Story 2/3/4 as spatial foundation.
+Checklist: Zone naming, tags audited, safe slopes < 30°.
 ```
-Title: Implement Atrium Spawn Logic  
-Context: Folder `workspace/AtriumSpawn` contains SpawnLocations.  
-Goal: Spawn players at random spawn; on death queue respawn at next DayStart.  
-Acceptance: Player respawns within 5 seconds of dawn.  
-Test Plan: Die during night; verify respawn location and reset inventory.  
-Files: `ServerScriptService/Systems/Spawn.server.lua`
-```
-
-**Checklist:**
-
--
 
 ---
 
-### Story 7 — Mall Greybox Environment (Design Integration)
+## Story 8 — Lighting Preset Module (Authoritative)
+**Experience Beat**: Consistency by code: every scene pulls from the same palette.
 
-**Claude Prompt:**
-
+```prompt
+Create shared LightingPresets module per /docs/ux-context.md.
+Context: Used by LightingController and tests.
+Goal: Export Day/Night/Dawn with exact tokens.
+Acceptance:
+- Values match context file; unit test verifies keys exist and types are correct.
+Files: `ReplicatedStorage/Shared/LightingPresets.lua`.
+Test: Manually apply presets; visual QA.
+Sequence: precedes Story 1.
+Checklist: Token parity with context.
 ```
-Title: Build Greybox Mall Layout  
-Context: Design Notes outline Atrium + 2 stores + maintenance corridor.  
-Goal: Create `.rbxl` file with parts for each zone and apply CollectionService tags (LootCrate, BarricadeAnchor, AtriumSpawn).  
-Acceptance: All tagged zones load in Studio; navigation paths are playable.  
-Test Plan: Load in Studio, walk end-to-end without falling or clipping.  
-Files: `workspace/MallGreybox.rbxm`
-```
-
-**Checklist:**
-
--
 
 ---
 
-### Story 8 — Lighting Preset Module
+## Story 9 — HUD Wireframe (Design)
+**Experience Beat**: Establish spatial rules so later additions don’t drift.
 
-**Claude Prompt:**
-
+```prompt
+Create HUD wireframe as a reference.
+Context: Define safe zones and anchor points for icons, timer, banner.
+Goal: Build Studio frame with placeholders OR attach a static mock to `/docs/design_notes.md` (optional if Studio frame exists).
+Acceptance:
+- Readable on 1080p and mobile portrait; tap targets >=24 px.
+- Uses `HUD_Root`, `UI_IconPrimary`, `UI_Banner` components.
+Files: `StarterGui/HUD/Wireframe.mockup` or docs reference.
+Test: Resize viewport; verify layout adherence.
+Sequence: precedes Story 5.
+Checklist: Font sizes, padding tokens, UIScale.
 ```
-Title: Create LightingPresets Module  
-Context: Define visual tone for Day/Night phases.  
-Goal: Store color, fog, ambient, and contrast values in a shared module to be used by LightingController.  
-Acceptance: Presets match Design Notes lighting table.  
-Test Plan: Call LightingPresets.Day and LightingPresets.Night manually; verify visuals.  
-Files: `ReplicatedStorage/Shared/LightingPresets.lua`
-```
-
-**Checklist:**
-
--
 
 ---
 
-### Story 9 — HUD Wireframe (Design)
+## Story 10 — Monetization Hooks (Foundation)
+**Experience Beat**: A visible but inert shop entry — a reminder of progression without distracting the core loop.
 
-**Claude Prompt:**
-
+```prompt
+Stub soft currency and shop button.
+Context: Economy real logic in Sprint 2.
+Goal: Add `Coins` IntValue to player data; put `Shop` button in HUD; open/close mock panel.
+Acceptance:
+- Currency persists within session; button opens panel; no purchases.
+- Panel uses `UI_Panel` component; respects UI scale rules.
+Files: `ReplicatedStorage/Shared/Currency.lua`, `StarterGui/HUD/ShopButton.client.lua`.
+Test: Increment coins manually; toggle panel; no errors.
+Sequence: follows Story 5; precedes Sprint 2 economy.
+Checklist: UI_Panel, Font_Primary, FS_MD.
 ```
-Title: Create Mock HUD Wireframe  
-Context: Establish layout for inventory icons and alerts per Design Notes.  
-Goal: Build Figma frame or Studio frame with placeholder icons in safe zones.  
-Acceptance: Layout readable on 1080p desktop and mobile.  
-Test Plan: Resize Studio viewport; verify responsive positioning.  
-Files: `StarterGui/HUD/Wireframe.mockup` or `/docs/design_notes.md` reference.
-```
+## Global Build Order (for Agents)
+1) Story 8 → 1 → 5 (visual spine)
+2) Story 7 → 2 → 3 → 4 (core loop)
+3) Story 6 (respawn) → 10 (shop stub) → 9 (wireframe if not already)
 
 **Checklist:**
-
--
-
----
-
-### Story 10 — Monetization Hooks (Foundation)
-
-**Claude Prompt:**
-
-```
-Title: Stub Currency & Shop Entry Points
-Context: Economy design planned for Sprint 2. Need placeholders in current systems.
-Goal: Add a soft-currency IntValue ("Coins") and a placeholder "Shop" button in HUD.
-Acceptance: Currency variable saves per player session; Shop button opens a mock panel (no purchases).
-Test Plan: Verify variable increments manually; ensure UI element toggles without errors.
-Files: `ReplicatedStorage/Shared/Currency.lua`, `StarterGui/HUD/ShopButton.client.lua`
-```
-
-**Checklist:**
-
+- [ ] Day/Night/Loot/Barricade/Enemy loop playable end‑to‑end.
+- [ ] HUD shows icons/time; banners on phase changes.
+- [ ] Coins variable and Shop panel exist (no monetization logic).
+- [ ] All visuals/motion pull from `/docs/ux-context.md` tokens.
+- [ ] Verified PC + mobile portrait performance.
 * [ ] Add `Coins` variable to player data model
 * [ ] Create "Shop" button in HUD (visible, non-functional)
 * [ ] Link button to open/close a blank frame
