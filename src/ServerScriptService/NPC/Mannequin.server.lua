@@ -140,15 +140,15 @@ local function behaviorLoop(mannequin)
   local lastAttackTime = 0
   local failedPathAttempts = 0
   local MAX_PATH_FAILURES = 5
-  local currentTarget = nil
+  local lastKnownTarget = nil -- Tracked across iterations for failure counter
 
   while mannequin.Parent and humanoid.Health > 0 do
-    local target = findTarget(torso.Position)
+    local target = findTarget(torso.Position) -- Fresh target each iteration
     if target then
       -- Reset failure counter if target changed
-      if target ~= currentTarget then
+      if target ~= lastKnownTarget then
         failedPathAttempts = 0
-        currentTarget = target
+        lastKnownTarget = target
       end
 
       -- Check if already in attack range
@@ -181,10 +181,10 @@ local function behaviorLoop(mannequin)
               return
             end
 
-            -- Check for closer boards while moving
-            local closerTarget = findTarget(torso.Position)
-            if closerTarget and closerTarget ~= target then
-              break -- Re-evaluate target
+            -- Check if a different target appeared (closer or priority changed)
+            local reevaluatedTarget = findTarget(torso.Position)
+            if reevaluatedTarget and reevaluatedTarget ~= target then
+              break -- Exit waypoint loop to re-evaluate target on next main loop iteration
             end
 
             humanoid:MoveTo(waypoint.Position)
@@ -195,11 +195,12 @@ local function behaviorLoop(mannequin)
               task.wait(0.1)
               moveTimeout = moveTimeout + 0.1
 
-              -- Check if in attack range
-              if closerTarget and closerTarget.Name == "Board" then
-                local dist = (closerTarget.Position - torso.Position).Magnitude
+              -- Check if in attack range (re-check target each tick in case we got closer)
+              local nearestTarget = findTarget(torso.Position)
+              if nearestTarget and nearestTarget.Name == "Board" then
+                local dist = (nearestTarget.Position - torso.Position).Magnitude
                 if dist <= 6 then
-                  break
+                  break -- Exit movement wait loop to attack
                 end
               end
             until moveTimeout >= 3 or (torso.Position - waypoint.Position).Magnitude < 3
@@ -219,7 +220,7 @@ local function behaviorLoop(mannequin)
           if failedPathAttempts >= MAX_PATH_FAILURES then
             -- Too many failures, force target re-evaluation
             warn("[Mannequin] Too many path failures, forcing target re-evaluation")
-            currentTarget = nil -- Force findTarget to pick a new target
+            lastKnownTarget = nil -- Clear tracked target to force fresh evaluation
             failedPathAttempts = 0
             task.wait(2) -- Wait longer before trying again
           else
@@ -230,7 +231,7 @@ local function behaviorLoop(mannequin)
       end
     else
       -- No target found, wait
-      currentTarget = nil
+      lastKnownTarget = nil
       failedPathAttempts = 0
       task.wait(1)
     end
