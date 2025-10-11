@@ -26,6 +26,7 @@ local M = {
   -- Server-to-server signals (BindableEvents)
   DayStarted = newBindableEvent("DayStarted"),
   NightStarted = newBindableEvent("NightStarted"),
+  BoardDamaged = newBindableEvent("BoardDamaged"), -- Enemy → Barricade system
 
   -- Client/server communication (RemoteEvents)
   StateTick = newRemoteEvent("StateTick"),

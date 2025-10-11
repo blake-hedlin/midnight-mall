@@ -117,17 +117,16 @@ local function attackBoard(mannequin, board)
     return
   end
 
-  if _G.BarricadeSystem and _G.BarricadeSystem.damageBoard then
-    _G.BarricadeSystem.damageBoard(board, DAMAGE_AMOUNT)
+  -- Fire signal to damage the board (signal-based architecture)
+  Signals.BoardDamaged:Fire(board, DAMAGE_AMOUNT)
 
-    local durability = board:FindFirstChild("Durability")
-    if durability then
-      print("[Mannequin] Damaged board, durability remaining:", durability.Value)
-    end
-
-    -- Play attack SFX
-    playSFX_EnemyHit(board)
+  local durability = board:FindFirstChild("Durability")
+  if durability then
+    print("[Mannequin] Attacking board, durability will be:", durability.Value - DAMAGE_AMOUNT)
   end
+
+  -- Play attack SFX
+  playSFX_EnemyHit(board)
 end
 
 local function behaviorLoop(mannequin)

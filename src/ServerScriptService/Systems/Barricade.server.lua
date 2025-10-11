@@ -311,14 +311,15 @@ for _, inst in ipairs(CollectionService:GetTagged(TAG)) do
 end
 CollectionService:GetInstanceAddedSignal(TAG):Connect(setupAnchor)
 
--- Expose damage function for enemy AI
-function damageBoard(board, damageAmount)
+-- Listen for board damage events from enemy AI
+Signals.BoardDamaged.Event:Connect(function(board, damageAmount)
+  if not board or not board.Parent then
+    return
+  end
+
   local durability = board:FindFirstChild("Durability")
   if durability then
     durability.Value -= damageAmount
+    print("[Barricade] Board damaged by", damageAmount, "HP, remaining:", durability.Value)
   end
-end
-
-_G.BarricadeSystem = {
-  damageBoard = damageBoard,
-}
+end)
