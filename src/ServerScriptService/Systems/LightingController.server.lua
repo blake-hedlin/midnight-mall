@@ -1,27 +1,34 @@
 -- LightingController.server.lua
 -- Sprint 1, Story 1: Apply lighting presets based on Day/Night cycle
 -- Listens to DayStarted and NightStarted signals from Clock system
+-- Authoritative source: /docs/design_notes/ux-context.md
 
 print("[LightingController] Loading...")
 
 local Lighting = game:GetService("Lighting")
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 local TweenService = game:GetService("TweenService")
+local SoundService = game:GetService("SoundService")
 
 local Signals = require(ReplicatedStorage.Shared.Signals)
 local LightingPresets = require(ReplicatedStorage.Shared.LightingPresets)
 
 print("[LightingController] Modules loaded, setting up connections...")
 
-local TRANSITION_DURATION = 3 -- seconds
+-- UX Context tokens
+local TWEEN_SCENE = 1.5 -- seconds (per ux-context.md)
+local HEARTBEAT_FADEIN_DURATION = 3 -- seconds
+local HEARTBEAT_VOLUME = 0.4
 
-local function applyPreset(preset)
+local heartbeatSound = nil
+local heartbeatTween = nil
+
+local function applyPreset(preset, bannerText, playNightSFX)
   print("[LightingController] Applying preset - Ambient:", preset.Ambient, "FogEnd:", preset.FogEnd, "FogColor:", preset.FogColor)
 
-  local tweenInfo =
-    TweenInfo.new(TRANSITION_DURATION, Enum.EasingStyle.Sine, Enum.EasingDirection.InOut)
+  local tweenInfo = TweenInfo.new(TWEEN_SCENE, Enum.EasingStyle.Quad, Enum.EasingDirection.InOut)
 
-  -- Tween lighting properties
+  -- Tween lighting properties including ColorShift and ExposureCompensation
   local lightingTween = TweenService:Create(Lighting, tweenInfo, {
     Ambient = preset.Ambient,
     OutdoorAmbient = preset.OutdoorAmbient,
@@ -29,48 +36,90 @@ local function applyPreset(preset)
     FogEnd = preset.FogEnd,
     FogStart = preset.FogStart,
     FogColor = preset.FogColor,
+    ColorShift_Top = preset.ColorShift_Top,
+    ColorShift_Bottom = preset.ColorShift_Bottom,
+    ExposureCompensation = preset.ExposureCompensation,
   })
 
   lightingTween:Play()
   print("[LightingController] Lighting tween started")
 
-  -- Apply ColorCorrection if it exists
-  local colorCorrection = Lighting:FindFirstChildOfClass("ColorCorrectionEffect")
-  if not colorCorrection then
-    colorCorrection = Instance.new("ColorCorrectionEffect")
-    colorCorrection.Parent = Lighting
-    print("[LightingController] Created new ColorCorrectionEffect")
+  -- Fire UI Banner if specified
+  if bannerText then
+    Signals.StateChanged:FireAllClients(bannerText)
+    print("[LightingController] UI_Banner fired:", bannerText)
   end
 
-  local ccTween = TweenService:Create(colorCorrection, tweenInfo, {
-    TintColor = preset.TintColor or Color3.new(1, 1, 1),
-    Contrast = preset.Contrast or 0,
-    Saturation = preset.Saturation or 0,
-  })
-
-  ccTween:Play()
-  print("[LightingController] ColorCorrection tween started")
+  -- Play SFX_NightStart if specified
+  if playNightSFX then
+    -- TODO: Play SFX_NightStart sound at -6 dB
+    print("[LightingController] SFX_NightStart triggered (placeholder)")
+  end
 
   -- Debug: Check actual Lighting values after a moment
-  task.delay(TRANSITION_DURATION + 0.5, function()
+  task.delay(TWEEN_SCENE + 0.5, function()
     print("[LightingController] Final values - Ambient:", Lighting.Ambient, "FogEnd:", Lighting.FogEnd)
   end)
 end
 
+local function startHeartbeat()
+  -- Start heartbeat loop with fade-in from 0 → 0.4 over 3 seconds
+  print("[LightingController] Starting heartbeat loop")
+
+  -- TODO: Create/find heartbeat sound in SoundService
+  -- Placeholder for heartbeat implementation
+  -- heartbeatSound = SoundService:FindFirstChild("HeartbeatLoop")
+  -- if heartbeatSound then
+  --   heartbeatSound.Volume = 0
+  --   heartbeatSound.Looped = true
+  --   heartbeatSound:Play()
+  --   heartbeatTween = TweenService:Create(heartbeatSound, TweenInfo.new(HEARTBEAT_FADEIN_DURATION), { Volume = HEARTBEAT_VOLUME })
+  --   heartbeatTween:Play()
+  -- end
+end
+
+local function stopHeartbeat()
+  -- Stop heartbeat loop
+  print("[LightingController] Stopping heartbeat loop")
+
+  -- TODO: Stop heartbeat sound
+  -- if heartbeatTween then
+  --   heartbeatTween:Cancel()
+  -- end
+  -- if heartbeatSound then
+  --   heartbeatSound:Stop()
+  -- end
+end
+
 -- Listen to Day/Night state changes
 Signals.DayStarted.Event:Connect(function(nightCount)
-  print("[LightingController] DayStarted received, applying Day preset")
-  applyPreset(LightingPresets.Day)
+  print("[LightingController] DayStarted received, applying Dawn then Day preset")
+
+  -- Stop heartbeat loop when day starts
+  stopHeartbeat()
+
+  -- Apply Dawn preset first (brief transition)
+  applyPreset(LightingPresets.Dawn, "Dawn Breaking", false)
+
+  -- Then transition to Day after a short delay
+  task.delay(TWEEN_SCENE + 1.0, function()
+    applyPreset(LightingPresets.Day, nil, false)
+  end)
 end)
 
 Signals.NightStarted.Event:Connect(function(nightCount)
   print("[LightingController] NightStarted received, applying Night preset")
-  applyPreset(LightingPresets.Night)
+
+  -- Apply Night preset with banner and SFX
+  applyPreset(LightingPresets.Night, "Night Falling", true)
+
+  -- Start heartbeat loop
+  startHeartbeat()
 end)
 
 -- Apply initial preset on server start
 print("[LightingController] Connections established, applying initial Day preset")
 task.defer(function()
-  applyPreset(LightingPresets.Day)
+  applyPreset(LightingPresets.Day, nil, false)
   print("[LightingController] Initial Day preset applied")
 end)
