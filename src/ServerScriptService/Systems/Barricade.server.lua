@@ -15,6 +15,10 @@ local anchorBoards = {} -- [anchor] = board reference
 -- Tween constant from ux-context.md
 local TWEEN_FEEDBACK = 0.2 -- Snap animation duration per acceptance criteria
 
+-- Durability constants
+local DURABILITY_MIN = 3 -- Minimum starting durability for new boards
+local DURABILITY_MAX = 5 -- Maximum starting durability for new boards
+
 local function ensureInventory(player)
   local inv = player:FindFirstChild("Inventory")
   if not inv then
@@ -178,8 +182,8 @@ local function placeBoard(anchor, player)
   board.CFrame = anchor.CFrame
   board.Parent = workspace
 
-  -- Set durability (3-5 range)
-  local maxDurability = math.random(3, 5)
+  -- Set durability (randomized from DURABILITY_MIN to DURABILITY_MAX)
+  local maxDurability = math.random(DURABILITY_MIN, DURABILITY_MAX)
   local durability = Instance.new("IntValue")
   durability.Name = "Durability"
   durability.Value = maxDurability
