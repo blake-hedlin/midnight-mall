@@ -107,17 +107,46 @@ local function showBanner(text, color)
 	fadeOut:Play()
 end
 
-local function updateInventoryDisplay()
+local function updateInventoryDisplay(itemId)
+	-- Update display with 0.15s tick animation (TWEEN_FEEDBACK from ux-context.md)
 	for _, config in ipairs(itemConfigs) do
-		local count = inventory[config.name] or 0
-		itemLabels[config.name].Text = config.emoji .. " " .. config.label .. ": " .. count
+		if not itemId or config.name == itemId then
+			local count = inventory[config.name] or 0
+			local label = itemLabels[config.name]
+
+			-- Animate scale and color to show change
+			local tweenInfo = TweenInfo.new(0.15, Enum.EasingStyle.Quad, Enum.EasingDirection.Out)
+			local scaleUp = TweenService:Create(label, tweenInfo, { TextSize = 20 })
+			local scaleDown = TweenService:Create(label, tweenInfo, { TextSize = 16 })
+			local colorPulse = TweenService:Create(
+				label,
+				tweenInfo,
+				{ TextColor3 = Color3.fromRGB(100, 255, 100) }
+			)
+			local colorRestore = TweenService:Create(
+				label,
+				tweenInfo,
+				{ TextColor3 = Color3.fromRGB(255, 255, 255) }
+			)
+
+			-- Update text
+			label.Text = config.emoji .. " " .. config.label .. ": " .. count
+
+			-- Play tick animation
+			scaleUp:Play()
+			colorPulse:Play()
+			scaleUp.Completed:Connect(function()
+				scaleDown:Play()
+				colorRestore:Play()
+			end)
+		end
 	end
 end
 
 -- Listen for inventory updates
 Signals.InventoryChanged.OnClientEvent:Connect(function(id, value)
 	inventory[id] = value
-	updateInventoryDisplay()
+	updateInventoryDisplay(id)
 end)
 
 -- Listen for time updates

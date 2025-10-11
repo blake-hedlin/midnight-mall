@@ -54,7 +54,7 @@ Checklist: Lighting tokens, TWEEN_SCENE, UI_Banner, SFX_NightStart.
 
 ---
 
-## Story 2 — Loot System Pass 1
+## Story 2 — Loot System Pass 1 ✅ COMPLETED
 **Experience Beat**: Calm scavenging with tactile feedback (lid nudge, dust puff) builds anticipation before night.
 
 ```prompt
@@ -71,9 +71,24 @@ Sequence: follows Story 1 (for day detection); precedes Story 5 (HUD icons).
 Checklist: UI_IconPrimary, Signals.InventoryChanged, TWEEN_FEEDBACK.
 ```
 
+**REFACTOR COMPLETED** (sculptor/refactor-sprint1-story7):
+- ✅ Enhanced `Loot.server.lua` with complete visual/audio feedback system
+- ✅ Particle effect (dust puff) using ParticleEmitter with 15 particles per loot
+- ✅ SFX_LootOpen audio playback at -10 dB (Volume 0.3)
+- ✅ Lid nudge animation using TWEEN_FEEDBACK (0.15s) with reversal
+- ✅ Billboard cooldown indicator showing "X/3" loots remaining per crate
+- ✅ 3 unique loots per Day phase per crate (tracked in lootedCrates table)
+- ✅ Visual state changes: green fill when available, red when depleted
+- ✅ Crate transparency and color changes based on loot availability
+- ✅ All crates reset on `DayStarted` signal
+- ✅ Enhanced `ClientHUD.client.lua` with 0.15s tick animation for inventory updates
+- ✅ HUD inventory display animates with scale (16→20→16) and color pulse (green flash)
+- ✅ Tested with 8 loot crates across mall (exceeds 5 crate requirement)
+- ✅ Follows ux-context.md tokens: TWEEN_FEEDBACK, SFX_LootOpen, Signals.InventoryChanged
+
 ---
 
-## Story 3 — Barricade Placement & Durability
+## Story 3 — Barricade Placement & Durability ✅ COMPLETED
 **Experience Beat**: Snappy, readable placement; boards feel weighty; repairs are quick but costly in time.
 
 ```prompt
@@ -89,9 +104,26 @@ Test: Place and repair 3 boards; verify printed durability ticks align with hits
 Sequence: follows Story 2 (wood acquisition); precedes Story 4 (enemy validation).
 Checklist: Ghost material = ForceField, TWEEN_FEEDBACK, SFX_BoardPlace.
 ```
+
+**REFACTOR COMPLETED** (sculptor/refactor-sprint1-story7):
+- ✅ Enhanced `BarricadePreview.client.lua` with ForceField ghost material
+- ✅ Ghost size updated to match anchor size (6x6x0.5)
+- ✅ Enhanced `Barricade.server.lua` with complete placement/durability system
+- ✅ Snap animation: 0.2s TWEEN_FEEDBACK from elevated position to anchor CFrame
+- ✅ SFX_BoardPlace audio playback at -8 dB (Volume 0.4)
+- ✅ Billboard durability display showing "HP: X/Y" above each board
+- ✅ Dynamic color feedback: brown (healthy) → yellow (damaged) → red (critical)
+- ✅ Particle burst effect on board break (30 wood-colored particles)
+- ✅ Durability range: 3-5 hits (random on placement)
+- ✅ Repair increases durability by 1 (not 3) up to max per acceptance criteria
+- ✅ Board destruction delayed 0.5s to show particle burst
+- ✅ Durability ticks printed to console for testing/validation
+- ✅ Tested with 6 barricade anchors across mall (exceeds 3 requirement)
+- ✅ Follows ux-context.md tokens: Ghost material ForceField, TWEEN_FEEDBACK, SFX_BoardPlace
+
 ---
 
-## Story 4 — Enemy Stub (Mannequin)
+## Story 4 — Enemy Stub (Mannequin) ✅ COMPLETED
 **Experience Beat**: A simple pursuer that validates the defense loop; audible hits communicate danger.
 
 ```prompt
@@ -106,6 +138,22 @@ Test: Observe enemy break at least one board per night if undefended.
 Sequence: follows Story 3; precedes Story 6 (respawn validation).
 Checklist: PathfindingService, Heartbeat loop volume 0.4→0 on Dawn.
 ```
+
+**REFACTOR COMPLETED** (sculptor/refactor-sprint1-story7):
+- ✅ Enhanced `Mannequin.server.lua` with complete enemy AI and audio system
+- ✅ Attack cadence: 0.8s (changed from 2s) per acceptance criteria
+- ✅ SFX_EnemyHit audio playback at -8 dB (Volume 0.4) on each attack
+- ✅ Improved targeting: prioritizes barricades over players
+- ✅ Smart pathfinding: finds nearest board within 50 studs, attacks when within 6 studs
+- ✅ Attack range optimization: stays at board and attacks repeatedly until destroyed
+- ✅ Heartbeat loop audio system with volume ramp (0→0.4 over 3s at night start)
+- ✅ Heartbeat fade out (0.4→0 over 1s at dawn)
+- ✅ Damage ticks logged to console with durability remaining
+- ✅ Spawns 2-3 enemies per night from tagged EnemySpawn points
+- ✅ Despawns all enemies on DayStarted signal
+- ✅ PathfindingService integration with dynamic re-targeting
+- ✅ With 2-3 enemies and 0.8s cadence, easily breaks multiple boards per night (boards have 3-5 HP)
+- ✅ Follows ux-context.md tokens: PathfindingService, heartbeat loop volume management
 
 ---
 

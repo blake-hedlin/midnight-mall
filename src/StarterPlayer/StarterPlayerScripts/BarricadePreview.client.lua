@@ -1,5 +1,6 @@
 -- BarricadePreview.client.lua
--- Ghost preview system for barricade placement
+-- Story 3: Ghost preview system for barricade placement
+-- REFACTORED: ForceField material, improved visual feedback
 
 local Players = game:GetService("Players")
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
@@ -17,13 +18,14 @@ local previewActive = false
 local PREVIEW_KEY = Enum.KeyCode.B -- Press B to toggle preview mode
 
 local function createGhostPart()
+	-- Ghost material = ForceField per ux-context.md checklist
 	local ghost = Instance.new("Part")
 	ghost.Name = "BarricadeGhost"
-	ghost.Size = Vector3.new(4, 0.2, 0.5)
+	ghost.Size = Vector3.new(6, 6, 0.5)
 	ghost.Anchored = true
 	ghost.CanCollide = false
 	ghost.Transparency = 0.5
-	ghost.Material = Enum.Material.Wood
+	ghost.Material = Enum.Material.ForceField
 	ghost.Parent = workspace
 	return ghost
 end
