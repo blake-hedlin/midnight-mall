@@ -105,7 +105,15 @@ bannerText.Font = Enum.Font.GothamSemibold -- Font_Primary per ux-context
 bannerText.Text = ""
 bannerText.Parent = banner
 
+-- Track active banner tweens to prevent animation conflicts
+local activeBannerTweens = {}
+
 local function showBanner(text, color)
+	-- Cancel any active tweens to prevent rapid-fire banner conflicts
+	for _, tween in ipairs(activeBannerTweens) do
+		tween:Cancel()
+	end
+	activeBannerTweens = {}
 	bannerText.Text = text
 	bannerText.TextColor3 = color or Color3.fromRGB(255, 255, 255)
 
@@ -133,6 +141,11 @@ local function showBanner(text, color)
 	banner.Position = UDim2.new(0, 0, 0, -80)
 	banner.BackgroundTransparency = 0.3
 	bannerText.TextTransparency = 0
+
+	-- Track tweens for cancellation
+	table.insert(activeBannerTweens, slideIn)
+	table.insert(activeBannerTweens, fadeOut)
+	table.insert(activeBannerTweens, textFadeOut)
 
 	-- Play slide in
 	slideIn:Play()
