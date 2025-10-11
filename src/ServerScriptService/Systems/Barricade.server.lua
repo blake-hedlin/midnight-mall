@@ -7,6 +7,7 @@ local CollectionService = game:GetService("CollectionService")
 local TweenService = game:GetService("TweenService")
 
 local Signals = require(ReplicatedStorage.Shared.Signals)
+local AssetConfig = require(ReplicatedStorage.Shared.AssetConfig)
 
 local TAG = "BarricadeAnchor"
 local anchorBoards = {} -- [anchor] = board reference
@@ -100,8 +101,8 @@ local function playSFX_BoardPlace(board)
   -- Play board placement sound at -8 dB (ux-context.md)
   local sound = Instance.new("Sound")
   sound.Name = "SFX_BoardPlace"
-  sound.SoundId = "rbxasset://sounds/impact_wood_hollow_03.wav"
-  sound.Volume = 0.4 -- -8 dB approximately
+  sound.SoundId = AssetConfig.Sounds.BarricadePlace
+  sound.Volume = 0.4 -- -8 dB approximately (louder than standard SFX)
   sound.Parent = board
   sound:Play()
 
@@ -114,7 +115,7 @@ local function createBreakParticles(board)
   -- Particle burst on board break
   local particle = Instance.new("ParticleEmitter")
   particle.Name = "BreakBurst"
-  particle.Texture = "rbxasset://textures/particles/sparkles_main.dds"
+  particle.Texture = AssetConfig.Particles.Sparkles
   particle.Rate = 0
   particle.Lifetime = NumberRange.new(0.3, 0.6)
   particle.Speed = NumberRange.new(5, 10)
