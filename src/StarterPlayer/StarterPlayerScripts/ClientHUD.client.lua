@@ -67,6 +67,12 @@ local itemConfigs = {
 	{ name = "coins", emoji = "🪙", label = "Coins" },
 }
 
+-- Build lookup table for O(1) access during inventory updates
+local itemConfigLookup = {}
+for _, config in ipairs(itemConfigs) do
+	itemConfigLookup[config.name] = config
+end
+
 local itemLabels = {}
 
 for i, config in ipairs(itemConfigs) do
@@ -166,29 +172,20 @@ local function updateInventoryDisplay(itemName)
 	for _, name in ipairs(itemsToUpdate) do
 		local count = inventory[name] or 0
 		local label = itemLabels[name]
-		if label then
-			-- Find config for this item
-			local config = nil
-			for _, c in ipairs(itemConfigs) do
-				if c.name == name then
-					config = c
-					break
-				end
-			end
+		local config = itemConfigLookup[name] -- O(1) lookup instead of O(n) search
 
-			if config then
-				-- Animate count update with 0.15s tick (TWEEN_FEEDBACK)
-				label.TextSize = FS_MD * 1.2 -- Slight scale up
+		if label and config then
+			-- Animate count update with 0.15s tick (TWEEN_FEEDBACK)
+			label.TextSize = FS_MD * 1.2 -- Slight scale up
 
-				local scaleDown = TweenService:Create(
-					label,
-					TweenInfo.new(TWEEN_FEEDBACK, Enum.EasingStyle.Quad, Enum.EasingDirection.InOut),
-					{ TextSize = FS_MD }
-				)
+			local scaleDown = TweenService:Create(
+				label,
+				TweenInfo.new(TWEEN_FEEDBACK, Enum.EasingStyle.Quad, Enum.EasingDirection.InOut),
+				{ TextSize = FS_MD }
+			)
 
-				label.Text = config.emoji .. " " .. config.label .. ": " .. count
-				scaleDown:Play()
-			end
+			label.Text = config.emoji .. " " .. config.label .. ": " .. count
+			scaleDown:Play()
 		end
 	end
 end
