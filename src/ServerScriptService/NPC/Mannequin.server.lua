@@ -11,7 +11,7 @@ local Signals = require(ReplicatedStorage.Shared.Signals)
 local AssetConfig = require(ReplicatedStorage.Shared.AssetConfig)
 
 local activeEnemies = {}
-local heartbeatSound = nil
+local heartbeatSound = nil -- Managed lifecycle: created on night, destroyed on day
 local DAMAGE_AMOUNT = 1
 local ATTACK_COOLDOWN = 0.8 -- Attack cadence per acceptance criteria
 local SPAWN_TAG = "EnemySpawn"
@@ -270,6 +270,16 @@ local function despawnAllEnemies()
   print("[Mannequin] All enemies despawned for day")
 end
 
+local function cleanupOrphanedHeartbeats()
+  -- Clean up any existing heartbeat sounds from previous script runs
+  for _, sound in ipairs(workspace:GetChildren()) do
+    if sound:IsA("Sound") and sound.Name == "HeartbeatLoop" then
+      sound:Destroy()
+      warn("[Mannequin] Cleaned up orphaned heartbeat sound from previous session")
+    end
+  end
+end
+
 local function createHeartbeatSound()
   -- Create global heartbeat loop sound (ux-context.md: heartbeat loop volume 0→0.4 over 3s)
   local sound = Instance.new("Sound")
@@ -309,26 +319,36 @@ local function startHeartbeatLoop()
 end
 
 local function stopHeartbeatLoop()
-  if heartbeatSound and heartbeatSound.Playing then
-    -- Fade volume to 0
-    local startVolume = heartbeatSound.Volume
-    local fadeTime = 1
-    local startTime = os.clock()
+  if heartbeatSound then
+    local soundToStop = heartbeatSound
+    heartbeatSound = nil -- Clear reference immediately to prevent reuse
 
-    task.spawn(function()
-      while heartbeatSound and os.clock() - startTime < fadeTime do
-        local elapsed = os.clock() - startTime
-        local progress = math.min(elapsed / fadeTime, 1)
-        heartbeatSound.Volume = startVolume * (1 - progress)
-        task.wait(0.1)
-      end
-      if heartbeatSound then
-        heartbeatSound.Volume = 0
-        heartbeatSound:Stop()
-      end
-    end)
+    if soundToStop.Playing then
+      -- Fade volume to 0
+      local startVolume = soundToStop.Volume
+      local fadeTime = 1
+      local startTime = os.clock()
 
-    print("[Mannequin] Heartbeat loop stopping, fading to volume 0")
+      task.spawn(function()
+        while soundToStop and soundToStop.Parent and os.clock() - startTime < fadeTime do
+          local elapsed = os.clock() - startTime
+          local progress = math.min(elapsed / fadeTime, 1)
+          soundToStop.Volume = startVolume * (1 - progress)
+          task.wait(0.1)
+        end
+        if soundToStop and soundToStop.Parent then
+          soundToStop:Stop()
+          soundToStop:Destroy()
+          print("[Mannequin] Heartbeat sound destroyed after fade")
+        end
+      end)
+
+      print("[Mannequin] Heartbeat loop stopping, fading to volume 0")
+    else
+      -- Not playing, destroy immediately
+      soundToStop:Destroy()
+      print("[Mannequin] Heartbeat sound destroyed (was not playing)")
+    end
   end
 end
 
@@ -345,3 +365,7 @@ Signals.DayStarted.Event:Connect(function()
   despawnAllEnemies()
   stopHeartbeatLoop()
 end)
+
+-- Initialize: Clean up any orphaned sounds from previous script runs
+cleanupOrphanedHeartbeats()
+print("[Mannequin] AI system initialized")
