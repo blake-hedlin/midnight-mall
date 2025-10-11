@@ -138,10 +138,19 @@ local function behaviorLoop(mannequin)
   end
 
   local lastAttackTime = 0
+  local failedPathAttempts = 0
+  local MAX_PATH_FAILURES = 5
+  local currentTarget = nil
 
   while mannequin.Parent and humanoid.Health > 0 do
     local target = findTarget(torso.Position)
     if target then
+      -- Reset failure counter if target changed
+      if target ~= currentTarget then
+        failedPathAttempts = 0
+        currentTarget = target
+      end
+
       -- Check if already in attack range
       local distanceToTarget = (target.Position - torso.Position).Magnitude
 
@@ -152,6 +161,7 @@ local function behaviorLoop(mannequin)
           lastAttackTime = os.clock()
         end
         task.wait(ATTACK_COOLDOWN) -- Wait for next attack
+        failedPathAttempts = 0 -- Reset counter on successful attack
       else
         -- Pathfind toward target
         local path = PathfindingService:CreatePath({
@@ -164,6 +174,7 @@ local function behaviorLoop(mannequin)
         end)
 
         if success and path.Status == Enum.PathStatus.Success then
+          failedPathAttempts = 0 -- Reset counter on successful path
           local waypoints = path:GetWaypoints()
           for i, waypoint in ipairs(waypoints) do
             if not mannequin.Parent or humanoid.Health <= 0 then
@@ -194,12 +205,33 @@ local function behaviorLoop(mannequin)
             until moveTimeout >= 3 or (torso.Position - waypoint.Position).Magnitude < 3
           end
         else
-          -- Path failed, wait and retry
-          task.wait(0.5)
+          -- Path failed, increment counter
+          failedPathAttempts += 1
+          warn(
+            "[Mannequin] Pathfinding failed ("
+              .. failedPathAttempts
+              .. "/"
+              .. MAX_PATH_FAILURES
+              .. "): "
+              .. tostring(errorMsg or "Path status: " .. tostring(path.Status))
+          )
+
+          if failedPathAttempts >= MAX_PATH_FAILURES then
+            -- Too many failures, force target re-evaluation
+            warn("[Mannequin] Too many path failures, forcing target re-evaluation")
+            currentTarget = nil -- Force findTarget to pick a new target
+            failedPathAttempts = 0
+            task.wait(2) -- Wait longer before trying again
+          else
+            -- Wait and retry
+            task.wait(0.5)
+          end
         end
       end
     else
       -- No target found, wait
+      currentTarget = nil
+      failedPathAttempts = 0
       task.wait(1)
     end
 
