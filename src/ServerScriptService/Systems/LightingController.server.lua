@@ -102,10 +102,15 @@ local function startHeartbeat()
   -- Start heartbeat loop with fade-in from 0 → 0.4 over 3 seconds
   debugPrint("Starting heartbeat loop")
 
+  -- Create HeartbeatLoop sound if it doesn't exist
   heartbeatSound = SoundService:FindFirstChild("HeartbeatLoop")
   if not heartbeatSound then
-    warn("[LightingController] HeartbeatLoop sound missing in SoundService - skipping audio")
-    return
+    heartbeatSound = Instance.new("Sound")
+    heartbeatSound.Name = "HeartbeatLoop"
+    heartbeatSound.SoundId = "rbxassetid://6500844850" -- TinnitusHeartbeat (9s loop)
+    heartbeatSound.RollOffMode = Enum.RollOffMode.Linear
+    heartbeatSound.Parent = SoundService
+    debugPrint("Created HeartbeatLoop sound instance")
   end
 
   heartbeatSound.Volume = 0
