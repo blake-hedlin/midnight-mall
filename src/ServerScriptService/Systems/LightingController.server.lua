@@ -3,7 +3,16 @@
 -- Listens to DayStarted and NightStarted signals from Clock system
 -- Authoritative source: /docs/design_notes/ux-context.md
 
-print("[LightingController] Loading...")
+-- Debug flag: Set to false to disable verbose logging in production
+local DEBUG = true
+
+local function debugPrint(...)
+  if DEBUG then
+    print("[LightingController]", ...)
+  end
+end
+
+debugPrint("Loading...")
 
 local Lighting = game:GetService("Lighting")
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
@@ -13,7 +22,7 @@ local SoundService = game:GetService("SoundService")
 local Signals = require(ReplicatedStorage.Shared.Signals)
 local LightingPresets = require(ReplicatedStorage.Shared.LightingPresets)
 
-print("[LightingController] Modules loaded, setting up connections...")
+debugPrint("Modules loaded, setting up connections...")
 
 -- UX Context tokens
 local TWEEN_SCENE = 1.5 -- seconds (per ux-context.md)
@@ -29,11 +38,18 @@ local activeLightingTween = nil
 local colorCorrection = Lighting:FindFirstChildOfClass("ColorCorrectionEffect")
 if colorCorrection then
   colorCorrection:Destroy()
-  print("[LightingController] Removed deprecated ColorCorrectionEffect")
+  debugPrint("Removed deprecated ColorCorrectionEffect")
 end
 
 local function applyPreset(preset, bannerText, playNightSFX)
-  print("[LightingController] Applying preset - Ambient:", preset.Ambient, "FogEnd:", preset.FogEnd, "FogColor:", preset.FogColor)
+  debugPrint(
+    "Applying preset - Ambient:",
+    preset.Ambient,
+    "FogEnd:",
+    preset.FogEnd,
+    "FogColor:",
+    preset.FogColor
+  )
 
   -- Cancel active tween to prevent memory leak and animation conflicts
   if activeLightingTween then
@@ -57,12 +73,12 @@ local function applyPreset(preset, bannerText, playNightSFX)
   })
 
   activeLightingTween:Play()
-  print("[LightingController] Lighting tween started")
+  debugPrint("Lighting tween started")
 
   -- Fire UI Banner if specified
   if bannerText then
     Signals.StateChanged:FireAllClients(bannerText)
-    print("[LightingController] UI_Banner fired:", bannerText)
+    debugPrint("UI_Banner fired:", bannerText)
   end
 
   -- Play SFX_NightStart if specified
@@ -72,19 +88,19 @@ local function applyPreset(preset, bannerText, playNightSFX)
       warn("[LightingController] SFX_NightStart sound missing in SoundService - skipping audio")
     else
       nightStartSound:Play()
-      print("[LightingController] SFX_NightStart played")
+      debugPrint("SFX_NightStart played")
     end
   end
 
   -- Debug: Check actual Lighting values after a moment
   task.delay(TWEEN_SCENE + 0.5, function()
-    print("[LightingController] Final values - Ambient:", Lighting.Ambient, "FogEnd:", Lighting.FogEnd)
+    debugPrint("Final values - Ambient:", Lighting.Ambient, "FogEnd:", Lighting.FogEnd)
   end)
 end
 
 local function startHeartbeat()
   -- Start heartbeat loop with fade-in from 0 → 0.4 over 3 seconds
-  print("[LightingController] Starting heartbeat loop")
+  debugPrint("Starting heartbeat loop")
 
   heartbeatSound = SoundService:FindFirstChild("HeartbeatLoop")
   if not heartbeatSound then
@@ -105,7 +121,7 @@ end
 
 local function stopHeartbeat()
   -- Stop heartbeat loop
-  print("[LightingController] Stopping heartbeat loop")
+  debugPrint("Stopping heartbeat loop")
 
   if heartbeatTween then
     heartbeatTween:Cancel()
@@ -120,7 +136,7 @@ end
 
 -- Listen to Day/Night state changes
 Signals.DayStarted.Event:Connect(function(nightCount)
-  print("[LightingController] DayStarted received, applying Dawn then Day preset")
+  debugPrint("DayStarted received, applying Dawn then Day preset")
 
   -- Stop heartbeat loop when day starts
   stopHeartbeat()
@@ -135,7 +151,7 @@ Signals.DayStarted.Event:Connect(function(nightCount)
 end)
 
 Signals.NightStarted.Event:Connect(function(nightCount)
-  print("[LightingController] NightStarted received, applying Night preset")
+  debugPrint("NightStarted received, applying Night preset")
 
   -- Apply Night preset with banner and SFX
   applyPreset(LightingPresets.Night, "Night Falling", true)
@@ -145,9 +161,9 @@ Signals.NightStarted.Event:Connect(function(nightCount)
 end)
 
 -- Apply initial preset on server start
-print("[LightingController] Connections established, applying initial Day preset")
+debugPrint("Connections established, applying initial Day preset")
 task.spawn(function()
   task.wait() -- Yield once to ensure Lighting service is fully initialized
   applyPreset(LightingPresets.Day, nil, false)
-  print("[LightingController] Initial Day preset applied")
+  debugPrint("Initial Day preset applied")
 end)
