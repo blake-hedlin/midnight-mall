@@ -34,7 +34,7 @@ Add hooks for currency and shop systems to reduce refactoring later. Focus remai
 
 ## 🧠 Stories, Prompts & Tracking
 
-## Story 1 — Lighting Cycle & Clock Controller
+## Story 1 — Lighting Cycle & Clock Controller ✅ COMPLETED
 **Experience Beat**: Time shifts are cinematic beats. Players *feel* the world change (light, fog, banner, audio) without UI clutter.
 
 ```prompt
@@ -51,6 +51,19 @@ Test: Play 2 minutes and verify two full transitions; confirm banner timing matc
 Sequence: precedes Story 5 (HUD), Story 4 (Enemy).
 Checklist: Lighting tokens, TWEEN_SCENE, UI_Banner, SFX_NightStart.
 ```
+
+**Refactor Completion Notes (Oct 2025):**
+- ✅ Updated transition duration from 3s to 1.5s (`TWEEN_SCENE` per ux-context.md)
+- ✅ Changed easing from `Sine` to `Quad` per UX tokens
+- ✅ Removed deprecated ColorCorrection properties (TintColor, Contrast, Saturation)
+- ✅ Added `ColorShift_Top` and `ColorShift_Bottom` to lighting tweens
+- ✅ Added `ExposureCompensation` to lighting tweens
+- ✅ Implemented **Dawn** phase support: Night → Dawn → Day sequence
+- ✅ Added UI_Banner triggers: "Night Falling" on NightStarted, "Dawn Breaking" on DayStarted
+- ✅ Added SFX_NightStart trigger (placeholder - awaits audio asset)
+- ✅ Implemented heartbeat loop start/stop functions (placeholder - awaits audio asset)
+- ✅ All lighting properties now pull from refactored `LightingPresets.lua` module
+- 📝 Note: Audio implementation uses TODO placeholders until SFX assets are added to SoundService
 
 ---
 
@@ -157,7 +170,7 @@ Checklist: PathfindingService, Heartbeat loop volume 0.4→0 on Dawn.
 
 ---
 
-## Story 5 — HUD & Banner Integration
+## Story 5 — HUD & Banner Integration ✅ COMPLETED
 **Experience Beat**: HUD stays subtle; banners mark phase shifts. Inventory changes feel alive but not noisy.
 
 ```prompt
@@ -173,6 +186,22 @@ Test: Loot items; observe real‑time updates; verify banner on NightStart.
 Sequence: follows Story 1 & 2; precedes Story 10 (Shop button placement).
 Checklist: Font_Primary, FS_MD, UI_Banner, TWEEN_UI.
 ```
+
+**Refactor Completion Notes (Oct 2025):**
+- ✅ Moved time counter to **top-right** per `HUD_Root` specification (was top-left)
+- ✅ Moved inventory display to **bottom-left** per `HUD_Root` specification (was below time)
+- ✅ Updated all fonts to `GothamSemibold` (`Font_Primary`) with `FS_MD` (18px)
+- ✅ Updated HUD margins to **32px safe zones** per ux-context
+- ✅ Updated icon spacing to use **8px grid base** per ux-context
+- ✅ Implemented inventory count animations with **0.15s tick** (`TWEEN_FEEDBACK`) - text scales on update
+- ✅ Refactored banner to **full-width top banner** with slide-in animation
+- ✅ Banner slide-in: **0.3s** (`TWEEN_UI`) with Quad easing
+- ✅ Banner fade-out: **1.0s** with Quad easing
+- ✅ Added **colorblind-safe colors** for banners:
+  - Night Falling: RGB(255, 100, 100) - Red tint
+  - Dawn Breaking: RGB(100, 180, 255) - Blue tint
+- ✅ Banner now accepts custom text from LightingController ("Night Falling", "Dawn Breaking")
+- ✅ All UX tokens properly referenced from ux-context.md
 
 ---
 
@@ -223,7 +252,7 @@ Checklist: Zone naming, tags audited, safe slopes < 30°.
 
 ---
 
-## Story 8 — Lighting Preset Module (Authoritative)
+## Story 8 — Lighting Preset Module (Authoritative) ✅ COMPLETED
 **Experience Beat**: Consistency by code: every scene pulls from the same palette.
 
 ```prompt
@@ -237,6 +266,14 @@ Test: Manually apply presets; visual QA.
 Sequence: precedes Story 1.
 Checklist: Token parity with context.
 ```
+
+**Refactor Completion Notes (Oct 2025):**
+- ✅ Refactored `LightingPresets.lua` to match exact specification from `/docs/design_notes/ux-context.md`
+- ✅ Added **Dawn** phase (was missing in original implementation)
+- ✅ Updated all properties to match authoritative tokens: Ambient, OutdoorAmbient, FogColor, FogStart, FogEnd, ColorShift_Top, ColorShift_Bottom, Brightness, ExposureCompensation
+- ✅ Removed deprecated properties (TintColor, Contrast, Saturation)
+- ✅ All three phases (Day/Night/Dawn) now have complete and consistent property sets
+- ✅ Ready for use by LightingController (Story 1)
 
 ---
 
