@@ -96,6 +96,12 @@ local function updateCooldownIndicator(part, current, max)
 end
 
 local function setCrateVisualState(part, remainingLoots, maxLoots)
+  -- Defensive: Verify part still exists and is valid
+  if not part or not part.Parent then
+    warn("[Loot] setCrateVisualState called on invalid/destroyed crate")
+    return false
+  end
+
   -- Visual feedback: show availability based on remaining loots
   local prompt = part:FindFirstChild("LootCratePrompt")
 
@@ -114,6 +120,16 @@ local function setCrateVisualState(part, remainingLoots, maxLoots)
   end
 
   updateCooldownIndicator(part, remainingLoots, maxLoots)
+
+  -- Verify cooldown indicator was properly updated
+  local indicator = part:FindFirstChild("CooldownIndicator")
+  if not indicator then
+    warn(string.format("[Loot] Missing CooldownIndicator on crate '%s' - recreating", part.Name))
+    createCooldownIndicator(part)
+    updateCooldownIndicator(part, remainingLoots, maxLoots)
+  end
+
+  return true
 end
 
 local function playLidNudgeAnimation(part)
@@ -219,13 +235,63 @@ end
 
 -- Reset all crates at the start of each day
 Signals.DayStarted.Event:Connect(function()
+  local resetCount = 0
+  local staleCount = 0
+  local errorCount = 0
+
   for crate, data in pairs(lootedCrates) do
+    -- Defensive: Remove stale references to destroyed crates
+    if not crate or not crate.Parent then
+      lootedCrates[crate] = nil
+      staleCount += 1
+      warn(string.format("[Loot] Removed stale crate reference during day reset"))
+      continue
+    end
+
     if data then
+      -- Reset loot count
       data.count = 0
-      setCrateVisualState(crate, data.maxLoots, data.maxLoots)
+
+      -- Apply visual state with verification
+      local success = setCrateVisualState(crate, data.maxLoots, data.maxLoots)
+
+      if success then
+        -- Verify all critical child elements exist
+        local prompt = crate:FindFirstChild("LootCratePrompt")
+        local particle = crate:FindFirstChild("LootPuff")
+        local indicator = crate:FindFirstChild("CooldownIndicator")
+
+        if not prompt then
+          warn(string.format("[Loot] Crate '%s' missing ProximityPrompt after reset", crate.Name))
+          errorCount += 1
+        end
+
+        if not particle then
+          warn(string.format("[Loot] Crate '%s' missing particle emitter - recreating", crate.Name))
+          createPuffParticle(crate)
+        end
+
+        if not indicator then
+          -- Already handled by setCrateVisualState, but log it
+          errorCount += 1
+        end
+
+        resetCount += 1
+      else
+        errorCount += 1
+      end
     end
   end
-  print("[Loot] All crates reset for new day - 3 loots per crate available")
+
+  -- Log comprehensive reset summary
+  print(
+    string.format(
+      "[Loot] Day reset complete: %d crates reset, %d stale references removed, %d errors detected",
+      resetCount,
+      staleCount,
+      errorCount
+    )
+  )
 end)
 
 -- Tag crates in Studio with CollectionService Tag "LootCrate"
@@ -233,3 +299,11 @@ for _, part in ipairs(CollectionService:GetTagged(TAG)) do
   wireCrate(part)
 end
 CollectionService:GetInstanceAddedSignal(TAG):Connect(wireCrate)
+
+-- Defensive: Clean up tracking when crates are removed
+CollectionService:GetInstanceRemovedSignal(TAG):Connect(function(part)
+  if lootedCrates[part] then
+    lootedCrates[part] = nil
+    print(string.format("[Loot] Cleaned up tracking for removed crate '%s'", part.Name))
+  end
+end)
