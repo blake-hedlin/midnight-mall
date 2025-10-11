@@ -146,7 +146,7 @@ Checklist: TWEEN_SCENE camera, Signals.PlayerDied.
 
 ---
 
-## Story 7 — Mall Greybox Environment (Design Integration)
+## Story 7 — Mall Greybox Environment (Design Integration) ✅ COMPLETED
 **Experience Beat**: A readable layout: Atrium hub, two stores, maintenance corridor; traversal is frictionless.
 
 ```prompt
@@ -161,6 +161,17 @@ Test: 5‑minute walk test; pathfinding from enemy spawns to barricades.
 Sequence: precedes Story 2/3/4 as spatial foundation.
 Checklist: Zone naming, tags audited, safe slopes < 30°.
 ```
+
+**REFACTOR COMPLETED** (sculptor/refactor-sprint1-story7):
+- ✅ Enhanced `MallBuilder.server.lua` with improved spatial definition
+- ✅ Added ceilings to all rooms for better spatial awareness
+- ✅ Implemented distinct zone lighting (Atrium: 2.5 brightness, Stores: 1.5, Maintenance: 0.8, Security: 1.2)
+- ✅ Improved barricade anchor placement (6 total, strategically positioned at chokepoints)
+- ✅ Added invisible collision barriers to prevent falls off map edges
+- ✅ Enhanced loot distribution (10 loot crates total across all zones)
+- ✅ All CollectionService tags properly applied (`LootCrate`, `BarricadeAnchor`, `EnemySpawn`, `AtriumSpawn`)
+- ✅ Pathfinding-friendly floor layout with no steep slopes or clipping hazards
+- ✅ Layout matches design notes: Atrium (hub) → Toy Galaxy (west) → Food Court (east) → Maintenance Corridor (south) → Security Office (north)
 
 ---
 

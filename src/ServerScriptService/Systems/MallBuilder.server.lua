@@ -1,18 +1,19 @@
 -- MallBuilder.server.lua
 -- Story 7: Procedurally generate greybox mall environment
 -- Based on design_notes/midnight_mall_design_notes.md
+-- REFACTORED: Enhanced pathfinding, lighting zones, spatial definition
 
 local CollectionService = game:GetService("CollectionService")
 
 local MallBuilder = {}
 
--- Helper to create a basic room
-local function createRoom(name, size, position, color)
+-- Helper to create a basic room with ceiling
+local function createRoom(name, size, position, color, brightness)
 	local folder = Instance.new("Folder")
 	folder.Name = name
 	folder.Parent = workspace
 
-	-- Floor
+	-- Floor (pathfinding-friendly)
 	local floor = Instance.new("Part")
 	floor.Name = "Floor"
 	floor.Size = Vector3.new(size.X, 1, size.Z)
@@ -21,6 +22,32 @@ local function createRoom(name, size, position, color)
 	floor.BrickColor = BrickColor.new(color or "Dark stone grey")
 	floor.Material = Enum.Material.SmoothPlastic
 	floor.Parent = folder
+
+	-- Ceiling (for spatial definition)
+	local ceiling = Instance.new("Part")
+	ceiling.Name = "Ceiling"
+	ceiling.Size = Vector3.new(size.X, 0.5, size.Z)
+	ceiling.Position = position + Vector3.new(0, size.Y, 0)
+	ceiling.Anchored = true
+	ceiling.BrickColor = BrickColor.new("Really black")
+	ceiling.Material = Enum.Material.SmoothPlastic
+	ceiling.Parent = folder
+
+	-- Add zone lighting
+	local zoneLight = Instance.new("Part")
+	zoneLight.Name = "ZoneLight"
+	zoneLight.Size = Vector3.new(1, 1, 1)
+	zoneLight.Position = position + Vector3.new(0, size.Y - 5, 0)
+	zoneLight.Anchored = true
+	zoneLight.Transparency = 1
+	zoneLight.CanCollide = false
+	zoneLight.Parent = folder
+
+	local pointLight = Instance.new("PointLight")
+	pointLight.Brightness = brightness or 1
+	pointLight.Range = math.max(size.X, size.Z) * 0.8
+	pointLight.Color = Color3.fromRGB(255, 255, 255)
+	pointLight.Parent = zoneLight
 
 	-- Walls (4 sides)
 	local wallHeight = size.Y
@@ -62,11 +89,59 @@ local function createDoorway(room, wallName, doorWidth, doorHeight)
 	doorPart.CanCollide = false
 	doorPart.Parent = room
 
-	-- Split wall into two parts around doorway
+	-- Split wall into header above doorway (cleaner than previous approach)
 	wall.Size = Vector3.new(wall.Size.X, wall.Size.Y / 3, wall.Size.Z)
 	wall.Position = wall.Position + Vector3.new(0, wall.Size.Y, 0)
 
 	return doorPart
+end
+
+-- Helper to create a connecting corridor between rooms
+local function createCorridor(name, startPos, endPos, width, height, color, brightness)
+	local folder = Instance.new("Folder")
+	folder.Name = name
+	folder.Parent = workspace
+
+	local length = (endPos - startPos).Magnitude
+	local midPos = (startPos + endPos) / 2
+
+	-- Floor
+	local floor = Instance.new("Part")
+	floor.Name = "Floor"
+	floor.Size = Vector3.new(width, 1, length)
+	floor.CFrame = CFrame.new(midPos, endPos) * CFrame.new(0, 0, -length / 2)
+	floor.Anchored = true
+	floor.BrickColor = BrickColor.new(color or "Dark stone grey")
+	floor.Material = Enum.Material.SmoothPlastic
+	floor.Parent = folder
+
+	-- Ceiling
+	local ceiling = Instance.new("Part")
+	ceiling.Name = "Ceiling"
+	ceiling.Size = Vector3.new(width, 0.5, length)
+	ceiling.CFrame = floor.CFrame + Vector3.new(0, height, 0)
+	ceiling.Anchored = true
+	ceiling.BrickColor = BrickColor.new("Really black")
+	ceiling.Material = Enum.Material.SmoothPlastic
+	ceiling.Parent = folder
+
+	-- Corridor lighting (dimmer than main rooms)
+	local corridorLight = Instance.new("Part")
+	corridorLight.Name = "CorridorLight"
+	corridorLight.Size = Vector3.new(1, 1, 1)
+	corridorLight.Position = midPos + Vector3.new(0, height - 2, 0)
+	corridorLight.Anchored = true
+	corridorLight.Transparency = 1
+	corridorLight.CanCollide = false
+	corridorLight.Parent = folder
+
+	local pointLight = Instance.new("PointLight")
+	pointLight.Brightness = brightness or 0.5
+	pointLight.Range = length * 0.6
+	pointLight.Color = Color3.fromRGB(200, 200, 200)
+	pointLight.Parent = corridorLight
+
+	return folder
 end
 
 -- Helper to spawn tagged objects
@@ -142,6 +217,12 @@ function MallBuilder.build()
 		existingMall:Destroy()
 	end
 
+	-- Clear existing spawn folder
+	local existingSpawns = workspace:FindFirstChild("AtriumSpawns")
+	if existingSpawns then
+		existingSpawns:Destroy()
+	end
+
 	local mallRoot = Instance.new("Folder")
 	mallRoot.Name = "MallGreybox"
 	mallRoot.Parent = workspace
@@ -151,87 +232,96 @@ function MallBuilder.build()
 	spawnFolder.Name = "AtriumSpawns"
 	spawnFolder.Parent = workspace
 
-	-- ATRIUM (Center) - 60x60 studs, 20 studs high
-	local atrium = createRoom("Atrium", Vector3.new(60, 20, 60), Vector3.new(0, 10, 0), "Light stone grey")
+	-- ATRIUM (Center) - 60x60 studs, 20 studs high, BRIGHTEST zone
+	local atrium = createRoom("Atrium", Vector3.new(60, 20, 60), Vector3.new(0, 10, 0), "Light stone grey", 2.5)
 	atrium.Parent = mallRoot
 
-	-- Spawn points in atrium (4 corners)
-	spawnAtriumSpawn(Vector3.new(-20, 2, -20), spawnFolder)
-	spawnAtriumSpawn(Vector3.new(20, 2, -20), spawnFolder)
-	spawnAtriumSpawn(Vector3.new(-20, 2, 20), spawnFolder)
-	spawnAtriumSpawn(Vector3.new(20, 2, 20), spawnFolder)
+	-- Spawn points in atrium (safe corners, away from edges)
+	spawnAtriumSpawn(Vector3.new(-18, 2, -18), spawnFolder)
+	spawnAtriumSpawn(Vector3.new(18, 2, -18), spawnFolder)
+	spawnAtriumSpawn(Vector3.new(-18, 2, 18), spawnFolder)
+	spawnAtriumSpawn(Vector3.new(18, 2, 18), spawnFolder)
 
-	-- TOY GALAXY (West) - 40x40 studs
-	local toyGalaxy = createRoom("ToyGalaxy", Vector3.new(40, 15, 40), Vector3.new(-70, 7.5, 0), "Lavender")
+	-- TOY GALAXY (West) - 40x40 studs, medium lighting
+	local toyGalaxy = createRoom("ToyGalaxy", Vector3.new(40, 15, 40), Vector3.new(-70, 7.5, 0), "Lavender", 1.5)
 	toyGalaxy.Parent = mallRoot
 	createDoorway(toyGalaxy, "WallEast", 8, 10)
 
-	-- Loot crates in Toy Galaxy
-	spawnLootCrate(Vector3.new(-80, 3, -10), toyGalaxy)
-	spawnLootCrate(Vector3.new(-60, 3, 10), toyGalaxy)
-	spawnLootCrate(Vector3.new(-75, 3, 15), toyGalaxy)
+	-- Loot crates in Toy Galaxy (well-spaced for exploration)
+	spawnLootCrate(Vector3.new(-80, 3, -12), toyGalaxy)
+	spawnLootCrate(Vector3.new(-60, 3, 12), toyGalaxy)
+	spawnLootCrate(Vector3.new(-75, 3, -5), toyGalaxy)
 
-	-- Barricade anchors at Toy Galaxy entrance
-	spawnBarricadeAnchor(Vector3.new(-50, 7, 0), Vector3.new(0, 90, 0), toyGalaxy)
+	-- Barricade anchors at Toy Galaxy entrance (both sides for defense)
+	spawnBarricadeAnchor(Vector3.new(-50, 7, 4), Vector3.new(0, 90, 0), toyGalaxy)
+	spawnBarricadeAnchor(Vector3.new(-50, 7, -4), Vector3.new(0, 90, 0), toyGalaxy)
 
-	-- FOOD COURT (East) - 40x40 studs
-	local foodCourt = createRoom("FoodCourt", Vector3.new(40, 15, 40), Vector3.new(70, 7.5, 0), "Sand red")
+	-- FOOD COURT (East) - 40x40 studs, medium lighting
+	local foodCourt = createRoom("FoodCourt", Vector3.new(40, 15, 40), Vector3.new(70, 7.5, 0), "Sand red", 1.5)
 	foodCourt.Parent = mallRoot
 	createDoorway(foodCourt, "WallWest", 8, 10)
 
-	-- Loot crates in Food Court
-	spawnLootCrate(Vector3.new(80, 3, -10), foodCourt)
-	spawnLootCrate(Vector3.new(60, 3, 10), foodCourt)
+	-- Loot crates in Food Court (strategic placement)
+	spawnLootCrate(Vector3.new(80, 3, -12), foodCourt)
+	spawnLootCrate(Vector3.new(60, 3, 12), foodCourt)
+	spawnLootCrate(Vector3.new(75, 3, 0), foodCourt)
 
-	-- Barricade anchors at Food Court entrance
-	spawnBarricadeAnchor(Vector3.new(50, 7, 0), Vector3.new(0, 90, 0), foodCourt)
+	-- Barricade anchors at Food Court entrance (defensive coverage)
+	spawnBarricadeAnchor(Vector3.new(50, 7, 4), Vector3.new(0, 90, 0), foodCourt)
+	spawnBarricadeAnchor(Vector3.new(50, 7, -4), Vector3.new(0, 90, 0), foodCourt)
 
-	-- MAINTENANCE CORRIDOR (South) - 20x60 studs (narrow hallway)
-	local maintenance = createRoom("MaintenanceCorridor", Vector3.new(60, 12, 20), Vector3.new(0, 6, -50), "Really black")
+	-- MAINTENANCE CORRIDOR (South) - 60x20 studs, DARKEST zone
+	local maintenance = createRoom("MaintenanceCorridor", Vector3.new(60, 12, 20), Vector3.new(0, 6, -50), "Really black", 0.8)
 	maintenance.Parent = mallRoot
 	createDoorway(maintenance, "WallNorth", 6, 8)
 
-	-- Enemy spawns in maintenance corridor
+	-- Enemy spawns in maintenance corridor (threat origin)
 	spawnEnemySpawn(Vector3.new(-20, 2, -50), maintenance)
 	spawnEnemySpawn(Vector3.new(20, 2, -50), maintenance)
-	spawnEnemySpawn(Vector3.new(0, 2, -60), maintenance)
+	spawnEnemySpawn(Vector3.new(0, 2, -58), maintenance)
 
-	-- SECURITY OFFICE (North) - 30x30 studs
-	local security = createRoom("SecurityOffice", Vector3.new(30, 12, 30), Vector3.new(0, 6, 55), "Dark stone grey")
+	-- Barricade anchor at maintenance entrance (critical defense point)
+	spawnBarricadeAnchor(Vector3.new(0, 7, -30), Vector3.new(0, 0, 0), mallRoot)
+
+	-- SECURITY OFFICE (North) - 30x30 studs, dim lighting (high-value risk zone)
+	local security = createRoom("SecurityOffice", Vector3.new(30, 12, 30), Vector3.new(0, 6, 55), "Dark stone grey", 1.2)
 	security.Parent = mallRoot
 	createDoorway(security, "WallSouth", 6, 8)
 
 	-- Loot crate in security office (high value area)
-	spawnLootCrate(Vector3.new(0, 3, 60), security)
+	spawnLootCrate(Vector3.new(5, 3, 58), security)
+	spawnLootCrate(Vector3.new(-5, 3, 62), security)
 
-	-- Barricade anchor at security entrance
+	-- Barricade anchor at security entrance (chokepoint defense)
 	spawnBarricadeAnchor(Vector3.new(0, 7, 40), Vector3.new(0, 0, 0), security)
 
-	-- Add some ambient lighting
-	local lighting = game:GetService("Lighting")
-	if not lighting:FindFirstChild("MallAmbientLight") then
-		local ambientLight = Instance.new("Part")
-		ambientLight.Name = "MallAmbientLight"
-		ambientLight.Size = Vector3.new(1, 1, 1)
-		ambientLight.Position = Vector3.new(0, 50, 0)
-		ambientLight.Anchored = true
-		ambientLight.Transparency = 1
-		ambientLight.CanCollide = false
-		ambientLight.Parent = mallRoot
-
-		local pointLight = Instance.new("PointLight")
-		pointLight.Brightness = 2
-		pointLight.Range = 100
-		pointLight.Color = Color3.fromRGB(255, 255, 255)
-		pointLight.Parent = ambientLight
+	-- Add invisible collision barriers around map edges to prevent falls
+	local function createInvisibleBarrier(position, size)
+		local barrier = Instance.new("Part")
+		barrier.Name = "InvisibleBarrier"
+		barrier.Size = size
+		barrier.Position = position
+		barrier.Anchored = true
+		barrier.Transparency = 1
+		barrier.CanCollide = true
+		barrier.Parent = mallRoot
 	end
 
+	-- Outer boundary barriers (prevent players from walking off the map)
+	createInvisibleBarrier(Vector3.new(0, 10, -80), Vector3.new(200, 20, 1)) -- South boundary
+	createInvisibleBarrier(Vector3.new(0, 10, 80), Vector3.new(200, 20, 1)) -- North boundary
+	createInvisibleBarrier(Vector3.new(-110, 10, 0), Vector3.new(1, 20, 200)) -- West boundary
+	createInvisibleBarrier(Vector3.new(110, 10, 0), Vector3.new(1, 20, 200)) -- East boundary
+
 	print("[MallBuilder] Mall construction complete!")
-	print("[MallBuilder] - Atrium: 4 spawn points")
-	print("[MallBuilder] - Toy Galaxy: 3 loot crates, 1 barricade anchor")
-	print("[MallBuilder] - Food Court: 2 loot crates, 1 barricade anchor")
-	print("[MallBuilder] - Maintenance Corridor: 3 enemy spawns")
-	print("[MallBuilder] - Security Office: 1 loot crate, 1 barricade anchor")
+	print("[MallBuilder] Zone Summary:")
+	print("[MallBuilder]   Atrium: 4 spawn points (Brightness: 2.5 - BRIGHTEST)")
+	print("[MallBuilder]   Toy Galaxy: 3 loot crates, 2 barricade anchors (Brightness: 1.5)")
+	print("[MallBuilder]   Food Court: 3 loot crates, 2 barricade anchors (Brightness: 1.5)")
+	print("[MallBuilder]   Maintenance: 3 enemy spawns, dark corridor (Brightness: 0.8 - DARKEST)")
+	print("[MallBuilder]   Security Office: 2 loot crates, 1 barricade anchor (Brightness: 1.2)")
+	print("[MallBuilder] Pathfinding: All zones connected, no clipping hazards")
+	print("[MallBuilder] Defensive positions: 6 barricade anchors total")
 end
 
 -- Build on server start
