@@ -23,6 +23,13 @@ local HEARTBEAT_VOLUME = 0.4
 local heartbeatSound = nil
 local heartbeatTween = nil
 
+-- Remove deprecated ColorCorrectionEffect from previous implementation
+local colorCorrection = Lighting:FindFirstChildOfClass("ColorCorrectionEffect")
+if colorCorrection then
+  colorCorrection:Destroy()
+  print("[LightingController] Removed deprecated ColorCorrectionEffect")
+end
+
 local function applyPreset(preset, bannerText, playNightSFX)
   print("[LightingController] Applying preset - Ambient:", preset.Ambient, "FogEnd:", preset.FogEnd, "FogColor:", preset.FogColor)
 
