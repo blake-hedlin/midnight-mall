@@ -137,9 +137,17 @@ local function playSFX_LootOpen(part)
 	sound.Parent = part
 	sound:Play()
 
-	-- Clean up after playing
+	-- Clean up after playing (primary method)
 	sound.Ended:Connect(function()
 		sound:Destroy()
+	end)
+
+	-- Backup cleanup to prevent memory leaks if Ended doesn't fire
+	-- Typical switch sound duration is < 1s, so 2s is a safe fallback
+	task.delay(2, function()
+		if sound.Parent then
+			sound:Destroy()
+		end
 	end)
 end
 
