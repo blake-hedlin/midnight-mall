@@ -22,6 +22,7 @@ local HEARTBEAT_VOLUME = 0.4
 
 local heartbeatSound = nil
 local heartbeatTween = nil
+local activeLightingTween = nil
 
 -- Remove deprecated ColorCorrectionEffect from previous implementation
 local colorCorrection = Lighting:FindFirstChildOfClass("ColorCorrectionEffect")
@@ -33,10 +34,16 @@ end
 local function applyPreset(preset, bannerText, playNightSFX)
   print("[LightingController] Applying preset - Ambient:", preset.Ambient, "FogEnd:", preset.FogEnd, "FogColor:", preset.FogColor)
 
+  -- Cancel active tween to prevent memory leak and animation conflicts
+  if activeLightingTween then
+    activeLightingTween:Cancel()
+    activeLightingTween = nil
+  end
+
   local tweenInfo = TweenInfo.new(TWEEN_SCENE, Enum.EasingStyle.Quad, Enum.EasingDirection.InOut)
 
   -- Tween lighting properties including ColorShift and ExposureCompensation
-  local lightingTween = TweenService:Create(Lighting, tweenInfo, {
+  activeLightingTween = TweenService:Create(Lighting, tweenInfo, {
     Ambient = preset.Ambient,
     OutdoorAmbient = preset.OutdoorAmbient,
     Brightness = preset.Brightness,
@@ -48,7 +55,7 @@ local function applyPreset(preset, bannerText, playNightSFX)
     ExposureCompensation = preset.ExposureCompensation,
   })
 
-  lightingTween:Play()
+  activeLightingTween:Play()
   print("[LightingController] Lighting tween started")
 
   -- Fire UI Banner if specified
@@ -59,8 +66,13 @@ local function applyPreset(preset, bannerText, playNightSFX)
 
   -- Play SFX_NightStart if specified
   if playNightSFX then
-    -- TODO: Play SFX_NightStart sound at -6 dB
-    print("[LightingController] SFX_NightStart triggered (placeholder)")
+    local nightStartSound = SoundService:FindFirstChild("SFX_NightStart")
+    if not nightStartSound then
+      warn("[LightingController] SFX_NightStart sound missing in SoundService - skipping audio")
+    else
+      nightStartSound:Play()
+      print("[LightingController] SFX_NightStart played")
+    end
   end
 
   -- Debug: Check actual Lighting values after a moment
@@ -73,29 +85,36 @@ local function startHeartbeat()
   -- Start heartbeat loop with fade-in from 0 → 0.4 over 3 seconds
   print("[LightingController] Starting heartbeat loop")
 
-  -- TODO: Create/find heartbeat sound in SoundService
-  -- Placeholder for heartbeat implementation
-  -- heartbeatSound = SoundService:FindFirstChild("HeartbeatLoop")
-  -- if heartbeatSound then
-  --   heartbeatSound.Volume = 0
-  --   heartbeatSound.Looped = true
-  --   heartbeatSound:Play()
-  --   heartbeatTween = TweenService:Create(heartbeatSound, TweenInfo.new(HEARTBEAT_FADEIN_DURATION), { Volume = HEARTBEAT_VOLUME })
-  --   heartbeatTween:Play()
-  -- end
+  heartbeatSound = SoundService:FindFirstChild("HeartbeatLoop")
+  if not heartbeatSound then
+    warn("[LightingController] HeartbeatLoop sound missing in SoundService - skipping audio")
+    return
+  end
+
+  heartbeatSound.Volume = 0
+  heartbeatSound.Looped = true
+  heartbeatSound:Play()
+  heartbeatTween = TweenService:Create(
+    heartbeatSound,
+    TweenInfo.new(HEARTBEAT_FADEIN_DURATION),
+    { Volume = HEARTBEAT_VOLUME }
+  )
+  heartbeatTween:Play()
 end
 
 local function stopHeartbeat()
   -- Stop heartbeat loop
   print("[LightingController] Stopping heartbeat loop")
 
-  -- TODO: Stop heartbeat sound
-  -- if heartbeatTween then
-  --   heartbeatTween:Cancel()
-  -- end
-  -- if heartbeatSound then
-  --   heartbeatSound:Stop()
-  -- end
+  if heartbeatTween then
+    heartbeatTween:Cancel()
+    heartbeatTween = nil
+  end
+
+  if heartbeatSound then
+    heartbeatSound:Stop()
+    heartbeatSound = nil
+  end
 end
 
 -- Listen to Day/Night state changes
@@ -126,7 +145,8 @@ end)
 
 -- Apply initial preset on server start
 print("[LightingController] Connections established, applying initial Day preset")
-task.defer(function()
+task.spawn(function()
+  task.wait() -- Yield once to ensure Lighting service is fully initialized
   applyPreset(LightingPresets.Day, nil, false)
   print("[LightingController] Initial Day preset applied")
 end)
