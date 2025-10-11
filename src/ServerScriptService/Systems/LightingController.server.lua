@@ -17,6 +17,7 @@ print("[LightingController] Modules loaded, setting up connections...")
 
 -- UX Context tokens
 local TWEEN_SCENE = 1.5 -- seconds (per ux-context.md)
+local DAWN_HOLD_DURATION = 1.0 -- seconds before transitioning to full Day
 local HEARTBEAT_FADEIN_DURATION = 3 -- seconds
 local HEARTBEAT_VOLUME = 0.4
 
@@ -128,7 +129,7 @@ Signals.DayStarted.Event:Connect(function(nightCount)
   applyPreset(LightingPresets.Dawn, "Dawn Breaking", false)
 
   -- Then transition to Day after a short delay
-  task.delay(TWEEN_SCENE + 1.0, function()
+  task.delay(TWEEN_SCENE + DAWN_HOLD_DURATION, function()
     applyPreset(LightingPresets.Day, nil, false)
   end)
 end)
