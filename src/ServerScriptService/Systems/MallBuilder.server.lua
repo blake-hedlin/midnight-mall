@@ -7,21 +7,83 @@ local CollectionService = game:GetService("CollectionService")
 
 local MallBuilder = {}
 
+-- Helper to create an open atrium space (floor + ceiling, no walls)
+-- Returns: atrium folder, floor surface Y position
+local function createAtrium(name, size, position, color, brightness)
+	local folder = Instance.new("Folder")
+	folder.Name = name
+	folder.Parent = workspace
+
+	-- Floor thickness constant
+	local FLOOR_THICKNESS = 1
+
+	-- Floor (open atrium floor)
+	local floor = Instance.new("Part")
+	floor.Name = "Floor"
+	floor.Size = Vector3.new(size.X, FLOOR_THICKNESS, size.Z)
+	floor.Position = position
+	floor.Anchored = true
+	floor.BrickColor = BrickColor.new(color or "Light stone grey")
+	floor.Material = Enum.Material.SmoothPlastic
+	floor.Parent = folder
+
+	-- Calculate the floor surface Y position (top of floor)
+	local floorSurfaceY = position.Y + (FLOOR_THICKNESS / 2)
+
+	-- Ceiling (for spatial definition)
+	local ceiling = Instance.new("Part")
+	ceiling.Name = "Ceiling"
+	ceiling.Size = Vector3.new(size.X, 0.5, size.Z)
+	ceiling.Position = position + Vector3.new(0, size.Y, 0)
+	ceiling.Anchored = true
+	ceiling.BrickColor = BrickColor.new("Really black")
+	ceiling.Material = Enum.Material.SmoothPlastic
+	ceiling.Parent = folder
+
+	-- Add zone lighting (brighter for open atrium)
+	local zoneLight = Instance.new("Part")
+	zoneLight.Name = "ZoneLight"
+	zoneLight.Size = Vector3.new(1, 1, 1)
+	zoneLight.Position = position + Vector3.new(0, size.Y - 5, 0)
+	zoneLight.Anchored = true
+	zoneLight.Transparency = 1
+	zoneLight.CanCollide = false
+	zoneLight.Parent = folder
+
+	local pointLight = Instance.new("PointLight")
+	pointLight.Brightness = brightness or 2.5
+	pointLight.Range = math.max(size.X, size.Z) * 1.2 -- Wider range for open space
+	pointLight.Color = Color3.fromRGB(255, 255, 255)
+	pointLight.Parent = zoneLight
+
+	-- NO WALLS - atrium is open to adjacent rooms
+
+	return folder, floorSurfaceY
+end
+
 -- Helper to create a basic room with ceiling
+-- Returns: room folder, floor surface Y position
 local function createRoom(name, size, position, color, brightness)
 	local folder = Instance.new("Folder")
 	folder.Name = name
 	folder.Parent = workspace
 
+	-- Floor thickness constant
+	local FLOOR_THICKNESS = 1
+
 	-- Floor (pathfinding-friendly)
+	-- Position is the CENTER of the floor, so top surface is at position.Y + (thickness/2)
 	local floor = Instance.new("Part")
 	floor.Name = "Floor"
-	floor.Size = Vector3.new(size.X, 1, size.Z)
+	floor.Size = Vector3.new(size.X, FLOOR_THICKNESS, size.Z)
 	floor.Position = position
 	floor.Anchored = true
 	floor.BrickColor = BrickColor.new(color or "Dark stone grey")
 	floor.Material = Enum.Material.SmoothPlastic
 	floor.Parent = folder
+
+	-- Calculate the floor surface Y position (top of floor)
+	local floorSurfaceY = position.Y + (FLOOR_THICKNESS / 2)
 
 	-- Ceiling (for spatial definition)
 	local ceiling = Instance.new("Part")
@@ -69,7 +131,8 @@ local function createRoom(name, size, position, color, brightness)
 		wall.Parent = folder
 	end
 
-	return folder
+	-- Return folder and floor surface Y for object placement
+	return folder, floorSurfaceY
 end
 
 -- Helper to create a doorway/opening in a wall
@@ -145,11 +208,15 @@ local function createCorridor(name, startPos, endPos, width, height, color, brig
 end
 
 -- Helper to spawn tagged objects
+-- Position should be (X, floorY, Z) - will automatically place on floor surface
 local function spawnLootCrate(position, parent)
 	local crate = Instance.new("Part")
 	crate.Name = "LootCrate"
-	crate.Size = Vector3.new(3, 3, 3)
-	crate.Position = position
+	local crateSize = Vector3.new(3, 3, 3)
+	crate.Size = crateSize
+	-- Position crate so its bottom sits on the floor surface
+	-- position.Y is the floor surface, so add half the crate height
+	crate.Position = Vector3.new(position.X, position.Y + (crateSize.Y / 2), position.Z)
 	crate.Anchored = true
 	crate.BrickColor = BrickColor.new("Br. yellowish orange")
 	crate.Material = Enum.Material.Wood
@@ -162,8 +229,11 @@ end
 local function spawnBarricadeAnchor(position, rotation, parent)
 	local anchor = Instance.new("Part")
 	anchor.Name = "BarricadeAnchor"
-	anchor.Size = Vector3.new(6, 6, 0.5)
-	anchor.Position = position
+	local anchorSize = Vector3.new(6, 6, 0.5)
+	anchor.Size = anchorSize
+	-- Position anchor so its bottom edge sits on the floor
+	-- For vertical anchors, center them at the floor + half height
+	anchor.Position = Vector3.new(position.X, position.Y + (anchorSize.Y / 2), position.Z)
 	anchor.Orientation = rotation
 	anchor.Anchored = true
 	anchor.BrickColor = BrickColor.new("Bright red")
@@ -179,8 +249,10 @@ end
 local function spawnEnemySpawn(position, parent)
 	local spawn = Instance.new("Part")
 	spawn.Name = "EnemySpawn"
-	spawn.Size = Vector3.new(4, 1, 4)
-	spawn.Position = position
+	local spawnSize = Vector3.new(4, 1, 4)
+	spawn.Size = spawnSize
+	-- Position spawn pad so it sits on the floor surface
+	spawn.Position = Vector3.new(position.X, position.Y + (spawnSize.Y / 2), position.Z)
 	spawn.Anchored = true
 	spawn.BrickColor = BrickColor.new("Really red")
 	spawn.Material = Enum.Material.Neon
@@ -195,8 +267,10 @@ end
 local function spawnAtriumSpawn(position, parent)
 	local spawn = Instance.new("SpawnLocation")
 	spawn.Name = "AtriumSpawn"
-	spawn.Size = Vector3.new(6, 1, 6)
-	spawn.Position = position
+	local spawnSize = Vector3.new(6, 1, 6)
+	spawn.Size = spawnSize
+	-- Position spawn so it sits on the floor surface
+	spawn.Position = Vector3.new(position.X, position.Y + (spawnSize.Y / 2), position.Z)
 	spawn.Anchored = true
 	spawn.BrickColor = BrickColor.new("Bright green")
 	spawn.Transparency = 0.5
@@ -232,68 +306,71 @@ function MallBuilder.build()
 	spawnFolder.Name = "AtriumSpawns"
 	spawnFolder.Parent = workspace
 
-	-- ATRIUM (Center) - 60x60 studs, 20 studs high, BRIGHTEST zone
-	local atrium = createRoom("Atrium", Vector3.new(60, 20, 60), Vector3.new(0, 10, 0), "Light stone grey", 2.5)
+	-- ATRIUM (Center) - 60x60 studs, 20 studs high, BRIGHTEST zone, OPEN (no walls)
+	local atrium, atriumFloorY = createAtrium("Atrium", Vector3.new(60, 20, 60), Vector3.new(0, 10, 0), "Light stone grey", 2.5)
 	atrium.Parent = mallRoot
 
 	-- Spawn points in atrium (safe corners, away from edges)
-	spawnAtriumSpawn(Vector3.new(-18, 2, -18), spawnFolder)
-	spawnAtriumSpawn(Vector3.new(18, 2, -18), spawnFolder)
-	spawnAtriumSpawn(Vector3.new(-18, 2, 18), spawnFolder)
-	spawnAtriumSpawn(Vector3.new(18, 2, 18), spawnFolder)
+	-- Use atriumFloorY for correct vertical placement
+	spawnAtriumSpawn(Vector3.new(-18, atriumFloorY, -18), spawnFolder)
+	spawnAtriumSpawn(Vector3.new(18, atriumFloorY, -18), spawnFolder)
+	spawnAtriumSpawn(Vector3.new(-18, atriumFloorY, 18), spawnFolder)
+	spawnAtriumSpawn(Vector3.new(18, atriumFloorY, 18), spawnFolder)
 
 	-- TOY GALAXY (West) - 40x40 studs, medium lighting
-	local toyGalaxy = createRoom("ToyGalaxy", Vector3.new(40, 15, 40), Vector3.new(-70, 7.5, 0), "Lavender", 1.5)
+	local toyGalaxy, toyFloorY = createRoom("ToyGalaxy", Vector3.new(40, 15, 40), Vector3.new(-70, 7.5, 0), "Lavender", 1.5)
 	toyGalaxy.Parent = mallRoot
 	createDoorway(toyGalaxy, "WallEast", 8, 10)
 
 	-- Loot crates in Toy Galaxy (well-spaced for exploration)
-	spawnLootCrate(Vector3.new(-80, 3, -12), toyGalaxy)
-	spawnLootCrate(Vector3.new(-60, 3, 12), toyGalaxy)
-	spawnLootCrate(Vector3.new(-75, 3, -5), toyGalaxy)
+	spawnLootCrate(Vector3.new(-80, toyFloorY, -12), toyGalaxy)
+	spawnLootCrate(Vector3.new(-60, toyFloorY, 12), toyGalaxy)
+	spawnLootCrate(Vector3.new(-75, toyFloorY, -5), toyGalaxy)
 
 	-- Barricade anchors at Toy Galaxy entrance (both sides for defense)
-	spawnBarricadeAnchor(Vector3.new(-50, 7, 4), Vector3.new(0, 90, 0), toyGalaxy)
-	spawnBarricadeAnchor(Vector3.new(-50, 7, -4), Vector3.new(0, 90, 0), toyGalaxy)
+	spawnBarricadeAnchor(Vector3.new(-50, toyFloorY, 4), Vector3.new(0, 90, 0), toyGalaxy)
+	spawnBarricadeAnchor(Vector3.new(-50, toyFloorY, -4), Vector3.new(0, 90, 0), toyGalaxy)
 
 	-- FOOD COURT (East) - 40x40 studs, medium lighting
-	local foodCourt = createRoom("FoodCourt", Vector3.new(40, 15, 40), Vector3.new(70, 7.5, 0), "Sand red", 1.5)
+	local foodCourt, foodFloorY = createRoom("FoodCourt", Vector3.new(40, 15, 40), Vector3.new(70, 7.5, 0), "Sand red", 1.5)
 	foodCourt.Parent = mallRoot
 	createDoorway(foodCourt, "WallWest", 8, 10)
 
 	-- Loot crates in Food Court (strategic placement)
-	spawnLootCrate(Vector3.new(80, 3, -12), foodCourt)
-	spawnLootCrate(Vector3.new(60, 3, 12), foodCourt)
-	spawnLootCrate(Vector3.new(75, 3, 0), foodCourt)
+	spawnLootCrate(Vector3.new(80, foodFloorY, -12), foodCourt)
+	spawnLootCrate(Vector3.new(60, foodFloorY, 12), foodCourt)
+	spawnLootCrate(Vector3.new(75, foodFloorY, 0), foodCourt)
 
 	-- Barricade anchors at Food Court entrance (defensive coverage)
-	spawnBarricadeAnchor(Vector3.new(50, 7, 4), Vector3.new(0, 90, 0), foodCourt)
-	spawnBarricadeAnchor(Vector3.new(50, 7, -4), Vector3.new(0, 90, 0), foodCourt)
+	spawnBarricadeAnchor(Vector3.new(50, foodFloorY, 4), Vector3.new(0, 90, 0), foodCourt)
+	spawnBarricadeAnchor(Vector3.new(50, foodFloorY, -4), Vector3.new(0, 90, 0), foodCourt)
 
 	-- MAINTENANCE CORRIDOR (South) - 60x20 studs, DARKEST zone
-	local maintenance = createRoom("MaintenanceCorridor", Vector3.new(60, 12, 20), Vector3.new(0, 6, -50), "Really black", 0.8)
+	local maintenance, maintFloorY = createRoom("MaintenanceCorridor", Vector3.new(60, 12, 20), Vector3.new(0, 6, -50), "Really black", 0.8)
 	maintenance.Parent = mallRoot
 	createDoorway(maintenance, "WallNorth", 6, 8)
 
 	-- Enemy spawns in maintenance corridor (threat origin)
-	spawnEnemySpawn(Vector3.new(-20, 2, -50), maintenance)
-	spawnEnemySpawn(Vector3.new(20, 2, -50), maintenance)
-	spawnEnemySpawn(Vector3.new(0, 2, -58), maintenance)
+	spawnEnemySpawn(Vector3.new(-20, maintFloorY, -50), maintenance)
+	spawnEnemySpawn(Vector3.new(20, maintFloorY, -50), maintenance)
+	spawnEnemySpawn(Vector3.new(0, maintFloorY, -58), maintenance)
 
 	-- Barricade anchor at maintenance entrance (critical defense point)
-	spawnBarricadeAnchor(Vector3.new(0, 7, -30), Vector3.new(0, 0, 0), mallRoot)
+	-- This one is in the atrium, so use atriumFloorY
+	spawnBarricadeAnchor(Vector3.new(0, atriumFloorY, -30), Vector3.new(0, 0, 0), mallRoot)
 
 	-- SECURITY OFFICE (North) - 30x30 studs, dim lighting (high-value risk zone)
-	local security = createRoom("SecurityOffice", Vector3.new(30, 12, 30), Vector3.new(0, 6, 55), "Dark stone grey", 1.2)
+	local security, securityFloorY = createRoom("SecurityOffice", Vector3.new(30, 12, 30), Vector3.new(0, 6, 55), "Dark stone grey", 1.2)
 	security.Parent = mallRoot
 	createDoorway(security, "WallSouth", 6, 8)
 
 	-- Loot crate in security office (high value area)
-	spawnLootCrate(Vector3.new(5, 3, 58), security)
-	spawnLootCrate(Vector3.new(-5, 3, 62), security)
+	spawnLootCrate(Vector3.new(5, securityFloorY, 58), security)
+	spawnLootCrate(Vector3.new(-5, securityFloorY, 62), security)
 
 	-- Barricade anchor at security entrance (chokepoint defense)
-	spawnBarricadeAnchor(Vector3.new(0, 7, 40), Vector3.new(0, 0, 0), security)
+	-- This one is in the atrium, so use atriumFloorY
+	spawnBarricadeAnchor(Vector3.new(0, atriumFloorY, 40), Vector3.new(0, 0, 0), security)
 
 	-- Add invisible collision barriers around map edges to prevent falls
 	local function createInvisibleBarrier(position, size)
